@@ -1,58 +1,57 @@
 import Hotel from "../models/Hotel.js";
 
-// 1. Create Hotel (Admin Only)
+// 1. Create Hotel
 export const createHotel = async (req, res, next) => {
   const newHotel = new Hotel(req.body);
   try {
     const savedHotel = await newHotel.save();
     res.status(200).json(savedHotel);
   } catch (err) {
-    next(err);
+    res.status(500).json(err);
   }
 };
 
-// 2. Get All Hotels (Search & Filter Logic)
-export const getHotels = async (req, res, next) => {
-  const { min, max, limit, search, ...others } = req.query;
-
-  // Basic query for exact matches (city, type, etc.)
-  let query = { ...others };
-
-  // Price Filter
-  if (min || max) {
-    query.cheapestPrice = {
-      ...(min && { $gt: min }),
-      ...(max && { $lt: max }),
-    };
-  }
-
-  // --- AI / Text Search Implementation ---
-  // User "Beach vibe relax" කියලා ගැහුවොත්, අපි Text Index එකෙන් හොයනවා.
-  if (search) {
-    query.$text = { $search: search };
-  }
-
+// 2. Update Hotel
+export const updateHotel = async (req, res, next) => {
   try {
-    const hotels = await Hotel.find(query).limit(parseInt(limit || 10));
-    res.status(200).json(hotels);
+    const updatedHotel = await Hotel.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body }, // එවපු ඩේටා ටික විතරක් update වෙනවා
+      { new: true } // Update වුනාට පස්සේ අලුත් data ටික return වෙනවා
+    );
+    res.status(200).json(updatedHotel);
   } catch (err) {
-    next(err);
+    res.status(500).json(err);
   }
 };
 
-// 3. Get Single Hotel
+// 3. Delete Hotel
+export const deleteHotel = async (req, res, next) => {
+  try {
+    await Hotel.findByIdAndDelete(req.params.id);
+    res.status(200).json("Hotel has been deleted.");
+  } catch (err) {
+    res.status(500).json(err);
+  }
+};
+
+// 4. Get Single Hotel
 export const getHotel = async (req, res, next) => {
   try {
-    // Hotel එක ගන්න ගමන් ඒකට අදාල Rooms ටිකත් ගන්නවා (Optional if needed here)
-    const hotel = await Hotel.findById(req.params.id);
+    // Hotel එක ගන්නකොටම එකේ තියෙන Rooms ටිකත් විස්තර සහිතව (populate) ගේන්න ඕනේ
+    const hotel = await Hotel.findById(req.params.id).populate("rooms");
     res.status(200).json(hotel);
   } catch (err) {
-    next(err);
+    res.status(500).json(err);
   }
 };
 
-// 4. Get Amenities List (To show in Admin Panel)
-import { HOTEL_AMENITIES } from "../utils/constants.js";
-export const getHotelAmenities = (req, res) => {
-  res.status(200).json(HOTEL_AMENITIES);
+// 5. Get All Hotels
+export const getHotels = async (req, res, next) => {
+  try {
+    const hotels = await Hotel.find();
+    res.status(200).json(hotels);
+  } catch (err) {
+    res.status(500).json(err);
+  }
 };

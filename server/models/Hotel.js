@@ -2,43 +2,105 @@ import mongoose from "mongoose";
 
 const hotelSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    description: { type: String, required: true }, // AI search එකට මේක වැදගත්
-    location: { type: String, required: true },
-    address: { type: String, required: true },
-
+    name: {
+      type: String,
+      required: true,
+    },
     type: {
       type: String,
-      enum: ["3 Star", "5 Star", "7 Star", "Apartment", "Villa"],
+      required: true, // Example: "Luxury Resort", "Villa", "Hotel"
+    },
+    location: {
+      type: String,
+      required: true, // Example: "Maldives, South Atoll"
+    },
+    address: {
+      type: String,
       required: true,
     },
-
-    // Pre-defined amenities (Pool, Gym, WiFi etc.)
+    contact: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+    },
+    description: {
+      type: String,
+      required: true,
+    },
+    // --- Images ---
+    images: {
+      type: [String], // Image URLs array ekak
+    },
+    // --- Pricing Section (Oya illapu widiyata) ---
+    price: {
+      normal: {
+        type: Number,
+        required: true,
+      },
+      discount: {
+        type: Number,
+        default: 0, // Discount ekak nathnam 0
+      },
+    },
+    // --- Ratings (Frontend eke thibuna key fields) ---
+    rating: {
+      type: Number,
+      min: 0,
+      max: 5,
+      default: 0,
+    },
+    reviews: {
+      type: Number, // Review count eka
+      default: 0,
+    },
+    // --- Amenities (Selection List 1) ---
     amenities: {
       type: [String],
-      default: [],
+      enum: [
+        "High-Speed Wifi",
+        "Infinity Pool",
+        "Luxury Gym",
+        "Fine Dining",
+        "Spa & Wellness",
+        "Bar / Lounge",
+        "Free Parking",
+        "Air Conditioning",
+        "Private Beach",
+        "24/7 Concierge",
+      ],
     },
-
-    images: {
-      type: [String], // Array of Image URLs
-      required: true,
+    // --- What this place offers (Selection List 2) ---
+    features: {
+      type: [String],
+      enum: [
+        "Private Beach Access",
+        "24/7 Room Service",
+        "Airport Shuttle",
+        "Kids Club",
+        "Water Sports Center",
+        "Cinema Room",
+        "Butler Service",
+        "BBQ Facilities",
+        "Currency Exchange",
+        "Laundry Service",
+      ],
     },
-
-    rating: { type: Number, min: 0, max: 5, default: 0 },
-    reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: "Review" }],
-    cheapestPrice: { type: Number, required: true }, // Sorting වලට ලේසියි
-    featured: { type: Boolean, default: false }, // Top Trending වලට
+    // --- Relationships ---
+    rooms: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Room", // Room model eka link karanawa
+      },
+    ],
+    featured: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
-
-// --- AI Search Optimization ---
-// නම, location එක, විස්තරය සහ පහසුකම් වලින් search කරන්න පුළුවන් විදියට index කරනවා.
-hotelSchema.index({
-  name: "text",
-  location: "text",
-  description: "text",
-  amenities: "text",
-});
 
 export default mongoose.model("Hotel", hotelSchema);

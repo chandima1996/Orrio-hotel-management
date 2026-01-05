@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useUser, UserButton, SignedIn, SignedOut } from "@clerk/clerk-react";
 import { Menu, Moon, Sun, DollarSign } from "lucide-react";
@@ -8,14 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useTheme } from "@/components/theme-provider";
 
-const Navbar = () => {
-  const { user, isLoaded } = useUser();
-  const { setTheme, theme } = useTheme();
-  const [currency, setCurrency] = useState("USD");
-  const location = useLocation(); // To highlight active link
+// --- අලුතින් එකතු කල Import එක ---
+import { useCurrency } from "@/context/CurrencyContext";
 
-  // 1. Admin Check Logic (Clerk Metadata වලින්)
-  // අපි clerk user කෙනෙක් හදනකොට metadata එකේ role: "admin" කියලා දාන්න ඕන.
+const Navbar = () => {
+  const { user } = useUser();
+  const { setTheme, theme } = useTheme();
+
+  // --- වෙනස් කල කොටස (Local State එක වෙනුවට Global Context) ---
+  const { currency, setCurrency } = useCurrency();
+
+  const location = useLocation();
+
+  // 1. Admin Check Logic
   const isAdmin = user?.publicMetadata?.role === "admin";
 
   // 2. Base Navigation Links
@@ -27,8 +32,6 @@ const Navbar = () => {
   ];
 
   // 3. Dynamic Links Generator
-  // User log වෙලා නැත්නම් Base links විතරයි.
-  // Log වුනාම Role එක අනුව අදාල Dashboard එක add වෙනවා.
   const getNavLinks = () => {
     const links = [...baseLinks];
     if (user) {
@@ -47,8 +50,10 @@ const Navbar = () => {
 
   const finalLinks = getNavLinks();
 
+  // --- Currency Toggle Logic (Updated) ---
   const toggleCurrency = () => {
-    setCurrency((prev) => (prev === "USD" ? "LKR" : "USD"));
+    // USD නම් LKR කරන්න, නැත්නම් USD කරන්න (Global Context එකේ)
+    setCurrency(currency === "USD" ? "LKR" : "USD");
   };
 
   return (
@@ -83,11 +88,12 @@ const Navbar = () => {
 
         {/* Right Section */}
         <div className="hidden md:flex items-center gap-4">
+          {/* Currency Button */}
           <Button
             variant="ghost"
             size="sm"
             onClick={toggleCurrency}
-            className="gap-1 font-bold text-xs border border-white/10"
+            className="gap-1 font-bold text-xs border border-white/10 hover:bg-white/10"
           >
             <DollarSign className="w-3 h-3" />
             {currency}
@@ -131,6 +137,16 @@ const Navbar = () => {
 
         {/* Mobile Menu */}
         <div className="md:hidden flex items-center gap-2">
+          {/* Mobile Currency Toggle Button (Optional if needed in header) */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleCurrency}
+            className="gap-1 font-bold text-xs border border-white/10 mr-1"
+          >
+            {currency}
+          </Button>
+
           <Button
             variant="ghost"
             size="icon"

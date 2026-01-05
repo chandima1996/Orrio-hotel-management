@@ -7,17 +7,17 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@/components/ui/carousel";
 import HotelCard from "./HotelCard";
+import { Link } from "react-router-dom";
 
-// Mock Data (Expanded with multiple images)
+// Mock Data
 const featuredHotels = [
   {
     _id: "1",
     name: "Crystal Sands Resort",
     location: "Maldives",
+    type: "Resort",
     description:
       "Experience the ultimate luxury in our overwater villas with direct ocean access.",
     images: [
@@ -26,6 +26,7 @@ const featuredHotels = [
     ],
     cheapestPrice: 450,
     rating: 4.8,
+    reviews: 128,
     amenities: ["wifi", "pool", "spa", "restaurant"],
     featured: true,
   },
@@ -33,6 +34,7 @@ const featuredHotels = [
     _id: "2",
     name: "Neon City Hotel",
     location: "Tokyo, Japan",
+    type: "Hotel",
     description:
       "A futuristic stay in the heart of Tokyo with AI-controlled rooms.",
     images: [
@@ -41,6 +43,7 @@ const featuredHotels = [
     ],
     cheapestPrice: 220,
     rating: 4.5,
+    reviews: 85,
     amenities: ["wifi", "gym", "bar", "ac"],
     featured: true,
   },
@@ -48,6 +51,7 @@ const featuredHotels = [
     _id: "3",
     name: "Alpine Glass Lodge",
     location: "Swiss Alps",
+    type: "Lodge",
     description:
       "Sleep under the stars in our glass-roofed igloos surrounded by mountains.",
     images: [
@@ -56,6 +60,7 @@ const featuredHotels = [
     ],
     cheapestPrice: 680,
     rating: 4.9,
+    reviews: 210,
     amenities: ["wifi", "hwater", "parking", "restaurant"],
     featured: true,
   },
@@ -63,6 +68,7 @@ const featuredHotels = [
     _id: "4",
     name: "Desert Mirage",
     location: "Dubai, UAE",
+    type: "Resort",
     description:
       "A sanctuary in the dunes featuring private pools and falconry experiences.",
     images: [
@@ -71,43 +77,13 @@ const featuredHotels = [
     ],
     cheapestPrice: 350,
     rating: 4.7,
+    reviews: 96,
     amenities: ["pool", "ac", "wifi", "bar"],
-    featured: true,
-  },
-  {
-    _id: "5",
-    name: "Jungle Treehouse",
-    location: "Bali, Indonesia",
-    description:
-      "Eco-friendly bamboo structures nestled high in the tropical canopy.",
-    images: [
-      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=1000",
-      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1000",
-    ],
-    cheapestPrice: 180,
-    rating: 4.6,
-    amenities: ["wifi", "spa", "restaurant"],
-    featured: true,
-  },
-  {
-    _id: "6",
-    name: "Urban Loft",
-    location: "New York, USA",
-    description:
-      "Industrial chic meets modern luxury in this downtown penthouse suite.",
-    images: [
-      "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?q=80&w=1000",
-      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=1000",
-    ],
-    cheapestPrice: 550,
-    rating: 4.4,
-    amenities: ["wifi", "gym", "bar"],
     featured: true,
   },
 ];
 
 const Featured = () => {
-  // Autoplay plugin configuration (delay: 3000ms)
   const plugin = React.useRef(
     Autoplay({ delay: 3000, stopOnInteraction: false })
   );
@@ -129,12 +105,14 @@ const Featured = () => {
               getaway.
             </p>
           </div>
-          <Button
-            variant="ghost"
-            className="gap-2 text-primary hover:text-primary hover:bg-primary/10"
-          >
-            View All Hotels <ArrowRight className="w-4 h-4" />
-          </Button>
+          <Link to="/find-hotels">
+            <Button
+              variant="ghost"
+              className="gap-2 text-primary hover:text-primary hover:bg-primary/10"
+            >
+              View All Hotels <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
         </div>
 
         {/* Carousel Section */}
@@ -149,13 +127,12 @@ const Featured = () => {
           >
             <CarouselContent className="-ml-4">
               {featuredHotels.map((hotel) => (
-                // md:basis-1/2 = Tablet එකේ කාඩ් 2ක්
-                // lg:basis-1/3 = Desktop එකේ කාඩ් 3ක්
                 <CarouselItem
                   key={hotel._id}
                   className="pl-4 md:basis-1/2 lg:basis-1/3 xl:basis-1/3 py-2"
                 >
                   <div className="h-full">
+                    {/* HotelCard එකට data යවද්දී දැන් ගැටළුවක් නෑ */}
                     <HotelCard hotel={hotel} />
                   </div>
                 </CarouselItem>

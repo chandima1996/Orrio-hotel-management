@@ -1,4 +1,7 @@
+import { useEffect } from "react"; // 1. useEffect import කරන්න
 import { Routes, Route } from "react-router-dom";
+import { useUser } from "@clerk/clerk-react"; // 2. useUser hook එක ගන්න
+import axios from "axios"; // 3. axios ගන්න
 
 // Components
 import Navbar from "./components/Navbar";
@@ -12,10 +15,11 @@ import { ThemeProvider } from "./components/theme-provider";
 import FindHotels from "./pages/FindHotels";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
-import Legal from "./pages/Legal"; // නම වෙනස් කළා (Step 3 බලන්න)
+import Legal from "./pages/Legal";
 import SingleHotel from "./pages/SingleHotel";
+import SignInPage from "./pages/SignInPage";
+import SignUpPage from "./pages/SignUpPage";
 
-// Home Page Layout
 const Home = () => (
   <>
     <Hero />
@@ -25,19 +29,45 @@ const Home = () => (
 );
 
 function App() {
+  // 4. Clerk එකෙන් User විස්තර ගන්න
+  const { user, isSignedIn } = useUser();
+
+  // 5. User Log වුනාම Backend එකට Data යවන්න
+  useEffect(() => {
+    const syncUser = async () => {
+      if (isSignedIn && user) {
+        try {
+          await axios.post("http://localhost:5000/api/users/save-user", {
+            clerkId: user.id,
+            email: user.primaryEmailAddress?.emailAddress,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            photo: user.imageUrl,
+          });
+          console.log("User synced with Database");
+        } catch (error) {
+          console.error("Error syncing user:", error);
+        }
+      }
+    };
+
+    syncUser();
+  }, [isSignedIn, user]); // User කෙනෙක් sign in වුන ගමන් මේක වැඩ කරනවා
+
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Navbar />
-      <main className="min-h-screen bg-background text-foreground font-sans flex flex-col">
+      <main className="min-h-screen bg-background text-foreground font-sans flex flex-col pt-20">
         <div className="flex-grow">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/find-hotels" element={<FindHotels />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/about" element={<About />} />
-            <Route path="/privacy" element={<Legal />} />{" "}
-            {/* අලුත් Component එක */}
+            <Route path="/privacy" element={<Legal />} />
             <Route path="/hotels/:id" element={<SingleHotel />} />
+            <Route path="/sign-in/*" element={<SignInPage />} />
+            <Route path="/sign-up/*" element={<SignUpPage />} />
           </Routes>
         </div>
         <Footer />
