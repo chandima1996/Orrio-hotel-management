@@ -1,163 +1,151 @@
+import { Link } from "react-router-dom";
 import {
-  MapPin,
   Star,
-  Heart,
-  ArrowRight,
+  MapPin,
   Wifi,
   Waves,
-  Utensils,
   Dumbbell,
-  Martini,
+  Utensils,
   Car,
-  Snowflake,
+  Wind,
+  Umbrella,
+  ConciergeBell,
+  MonitorPlay,
+  Coffee,
+  ArrowRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
-import Autoplay from "embla-carousel-autoplay";
-import { Link } from "react-router-dom";
-import { useCurrency } from "@/context/CurrencyContext";
+import { useCurrency } from "../context/CurrencyContext";
 
-// 1. Amenities සහ Icons මැප් කරන Object එක
+// 1. Database එකේ තියෙන නම් වලට Icons ගැලපීම
 const amenityIcons = {
-  wifi: { icon: Wifi, label: "Free Wifi" },
-  pool: { icon: Waves, label: "Pool" },
-  restaurant: { icon: Utensils, label: "Restaurant" },
-  gym: { icon: Dumbbell, label: "Gym" },
-  bar: { icon: Martini, label: "Bar" },
-  parking: { icon: Car, label: "Parking" },
-  spa: { icon: Snowflake, label: "Spa" },
-  ac: { icon: Snowflake, label: "A/C" },
-  hwater: { icon: Waves, label: "Hot Water" },
+  "High-Speed Wifi": { icon: Wifi, label: "Wifi" },
+  "Infinity Pool": { icon: Waves, label: "Pool" },
+  "Luxury Gym": { icon: Dumbbell, label: "Gym" },
+  "Fine Dining": { icon: Utensils, label: "Dining" },
+  "Spa & Wellness": { icon: Coffee, label: "Spa" },
+  "Bar / Lounge": { icon: Utensils, label: "Bar" },
+  "Free Parking": { icon: Car, label: "Parking" },
+  "Air Conditioning": { icon: Wind, label: "A/C" },
+  "Private Beach": { icon: Umbrella, label: "Beach" },
+  "24/7 Concierge": { icon: ConciergeBell, label: "Concierge" },
 };
 
 const HotelCard = ({ hotel }) => {
-  const { formatPrice } = useCurrency();
+  const { currency, convertPrice } = useCurrency();
 
-  // 2. Images නැති විට Placeholder එකක් පෙන්වීම
-  const images =
+  const displayImage =
     hotel.images && hotel.images.length > 0
-      ? hotel.images
-      : [hotel.image || "https://via.placeholder.com/400"];
+      ? hotel.images[0]
+      : "https://via.placeholder.com/400x300";
 
-  // 3. Price Error Fix: Featured වල 'cheapestPrice' එන්නේ, අනිත් ඒවායේ 'price' වෙන්න පුළුවන්
-  const finalPrice = hotel.cheapestPrice || hotel.price || 0;
+  const basePrice = hotel.price?.normal || 0;
+  const discountAmount = hotel.price?.discount || 0;
+  const finalPrice = basePrice - discountAmount;
 
   return (
-    <Card className="group overflow-hidden rounded-3xl border-border/50 bg-card hover:shadow-2xl hover:border-primary/20 transition-all duration-500 h-full flex flex-col">
-      {/* Image Carousel */}
-      <div className="relative h-64 w-full overflow-hidden bg-muted">
-        <Carousel
-          plugins={[Autoplay({ delay: 3000, stopOnInteraction: true })]}
-          className="w-full h-full"
-        >
-          <CarouselContent className="h-full ml-0">
-            {images.map((img, index) => (
-              <CarouselItem key={index} className="pl-0 h-full">
-                <img
-                  src={img}
-                  alt={hotel.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious className="left-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 hover:bg-black/40 text-white border-0 h-8 w-8" />
-          <CarouselNext className="right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 hover:bg-black/40 text-white border-0 h-8 w-8" />
-        </Carousel>
+    <Link to={`/hotels/${hotel._id}`} className="group block h-full">
+      <div className="bg-card rounded-2xl overflow-hidden border border-border/40 shadow-sm hover:shadow-2xl hover:border-primary/20 transition-all duration-300 h-full flex flex-col relative">
+        {/* --- Image Section --- */}
+        <div className="relative h-60 overflow-hidden">
+          <img
+            src={displayImage}
+            alt={hotel.name}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          />
+          {/* Overlay Gradient */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
 
-        <div className="absolute top-4 left-4 z-10">
-          {/* 4. Fix: Hotel Type එක හැමවෙලේම කළු පාටින් පෙන්වන්න (text-black) */}
-          <Badge className="bg-white/90 text-black hover:bg-white font-bold shadow-sm backdrop-blur-md border-0 px-3 py-1">
-            {hotel.type || "Resort"}
-          </Badge>
+          {/* Top Badges */}
+          <div className="absolute top-3 left-3 flex gap-2">
+            {hotel.featured && (
+              <span className="bg-white/90 backdrop-blur text-black text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wide">
+                Featured
+              </span>
+            )}
+            {discountAmount > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wide animate-pulse">
+                Save {currency} {convertPrice(discountAmount)}
+              </span>
+            )}
+          </div>
+
+          {/* Bottom Info on Image */}
+          <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+            <div className="text-white">
+              <p className="text-xs font-medium opacity-90 flex items-center gap-1 mb-1">
+                <MapPin className="w-3 h-3" /> {hotel.location}
+              </p>
+              <div className="flex items-center gap-1">
+                <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                <span className="font-bold text-sm">{hotel.rating}</span>
+                <span className="text-xs opacity-70">
+                  ({hotel.reviews} Reviews)
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-        <button className="absolute top-4 right-4 p-2 rounded-full bg-black/20 text-white hover:bg-white hover:text-red-500 transition-all backdrop-blur-sm z-10">
-          <Heart className="w-5 h-5" />
-        </button>
-      </div>
 
-      {/* Content */}
-      <div className="p-5 flex flex-col flex-grow">
-        <div className="flex justify-between items-start mb-2">
+        {/* --- Content Section --- */}
+        <div className="p-5 flex flex-col flex-grow gap-4">
           <div>
-            <h3 className="text-xl font-bold line-clamp-1 group-hover:text-primary transition-colors">
+            <div className="text-[10px] font-bold text-primary tracking-wider uppercase mb-1">
+              {hotel.type}
+            </div>
+            <h3 className="text-lg font-bold text-card-foreground group-hover:text-primary transition-colors line-clamp-1">
               {hotel.name}
             </h3>
-            <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
-              <MapPin className="w-3.5 h-3.5" />
-              <span className="line-clamp-1">{hotel.location}</span>
-            </div>
           </div>
-          <div className="flex flex-col items-end">
-            <div className="flex items-center gap-1 bg-primary/10 px-2 py-1 rounded-md">
-              <Star className="w-3.5 h-3.5 fill-primary text-primary" />
-              <span className="text-xs font-bold text-primary">
-                {hotel.rating}
-              </span>
-            </div>
-            <span className="text-[10px] text-muted-foreground mt-1">
-              {hotel.reviews || 0} reviews
-            </span>
-          </div>
-        </div>
 
-        {/* 5. Amenities Section (New) */}
-        <div className="flex items-center gap-3 my-3 overflow-hidden">
-          {hotel.amenities?.slice(0, 3).map((item, index) => {
-            const Amenity = amenityIcons[item];
-            if (!Amenity) return null;
-            return (
-              <div
-                key={index}
-                className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded-full"
-              >
-                <Amenity.icon className="w-3 h-3" />
-                <span>{Amenity.label}</span>
+          {/* Amenities with Icons (Professional Look) */}
+          <div className="flex flex-wrap gap-3">
+            {hotel.amenities?.slice(0, 4).map((amenity, index) => {
+              const IconData = amenityIcons[amenity];
+              const IconComponent = IconData ? IconData.icon : CheckCircle2;
+              const Label = IconData ? IconData.label : amenity;
+
+              return (
+                <div
+                  key={index}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary/50 px-2 py-1 rounded-full"
+                >
+                  {IconData && <IconComponent className="w-3.5 h-3.5" />}
+                  <span className="font-medium">{Label}</span>
+                </div>
+              );
+            })}
+            {hotel.amenities?.length > 4 && (
+              <span className="text-xs text-muted-foreground self-center">
+                +{hotel.amenities.length - 4} more
+              </span>
+            )}
+          </div>
+
+          {/* Pricing Footer */}
+          <div className="mt-auto pt-4 border-t border-border/50 flex items-end justify-between">
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground">
+                Price per night
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-xl font-bold text-foreground">
+                  {currency} {convertPrice(finalPrice)}
+                </span>
+                {discountAmount > 0 && (
+                  <span className="text-xs text-muted-foreground line-through">
+                    {convertPrice(basePrice)}
+                  </span>
+                )}
               </div>
-            );
-          })}
-          {hotel.amenities?.length > 3 && (
-            <span className="text-xs text-muted-foreground">
-              +{hotel.amenities.length - 3} more
-            </span>
-          )}
-        </div>
-
-        <p className="text-muted-foreground text-sm line-clamp-2 mt-1 mb-4">
-          {hotel.description}
-        </p>
-
-        {/* Price Section with Currency */}
-        <div className="mt-auto pt-4 border-t border-border flex items-center justify-between">
-          <div>
-            <span className="text-xs text-muted-foreground uppercase font-medium">
-              Starts from
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl font-bold text-primary">
-                {/* 6. NaN fix using finalPrice variable */}
-                {formatPrice(finalPrice)}
-              </span>
-              <span className="text-sm text-muted-foreground">/ night</span>
             </div>
+
+            <button className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300">
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
-          <Link to={`/hotels/${hotel._id}`}>
-            <Button className="rounded-xl group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-              View{" "}
-              <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </Link>
         </div>
       </div>
-    </Card>
+    </Link>
   );
 };
 

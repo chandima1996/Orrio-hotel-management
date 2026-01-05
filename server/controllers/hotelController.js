@@ -46,11 +46,63 @@ export const getHotel = async (req, res, next) => {
   }
 };
 
-// 5. Get All Hotels
 export const getHotels = async (req, res, next) => {
+  const { min, max, limit, page, city, type, featured, sort } = req.query;
+
   try {
-    const hotels = await Hotel.find();
-    res.status(200).json(hotels);
+    // 1. Query Object එක හදාගැනීම
+    let query = {};
+
+    // Search by City (Case insensitive)
+    if (city) {
+      query.location = { $regex: city, $options: "i" };
+    }
+
+    // Filter by Type
+    if (type) {
+      query.type = type;
+    }
+
+    // Filter by Price Range
+    if (min || max) {
+      query["price.normal"] = {
+        $gte: min || 0,
+        $lte: max || 99999,
+      };
+    }
+
+    // Filter by Featured
+    if (featured) {
+      query.featured = featured === "true";
+    }
+
+    // 2. Sorting Logic
+    let sortOptions = {};
+    if (sort === "price_asc") sortOptions["price.normal"] = 1; // මිල අඩු සිට වැඩි
+    if (sort === "price_desc") sortOptions["price.normal"] = -1; // මිල වැඩි සිට අඩු
+    if (sort === "rating") sortOptions["rating"] = -1; // හොඳම rating මුලට
+    if (sort === "newest") sortOptions["createdAt"] = -1; // අලුත් ඒවා මුලට
+
+    // 3. Pagination Logic
+    const pageNumber = parseInt(page) || 1;
+    const limitNumber = parseInt(limit) || 6; // පිටුවකට හෝටල් 6යි
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // 4. Data Fetching
+    const hotels = await Hotel.find(query)
+      .sort(sortOptions)
+      .limit(limitNumber)
+      .skip(skip);
+
+    // මුළු හෝටල් ගණන (Pagination සඳහා)
+    const totalCount = await Hotel.countDocuments(query);
+
+    res.status(200).json({
+      hotels,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limitNumber),
+      currentPage: pageNumber,
+    });
   } catch (err) {
     res.status(500).json(err);
   }

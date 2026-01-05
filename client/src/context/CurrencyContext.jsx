@@ -3,24 +3,26 @@ import { createContext, useContext, useState } from "react";
 const CurrencyContext = createContext();
 
 export const CurrencyProvider = ({ children }) => {
-  const [currency, setCurrency] = useState("USD"); // Default Currency
+  // Default currency is USD
+  const [currency, setCurrency] = useState("USD");
 
-  // 1 USD = 300 LKR (මෙය පසුව API එකකින් ගන්න පුළුවන්)
-  const exchangeRate = 300;
+  // Exchange Rates (Static values for now)
+  const rates = {
+    USD: 1,
+    LKR: 300, // 1 USD = 300 LKR (Approx)
+    EUR: 0.92,
+    GBP: 0.79,
+  };
 
-  // මිල Format කරන Function එක
-  const formatPrice = (priceInUSD) => {
-    if (currency === "LKR") {
-      // රුපියල් නම්: 300න් වැඩි කර කොමා දමා පෙන්වන්න (e.g., LKR 45,000)
-      const converted = priceInUSD * exchangeRate;
-      return `LKR ${converted.toLocaleString()}`;
-    }
-    // ඩොලර් නම් (e.g., $150)
-    return `$${priceInUSD}`;
+  // Price Conversion Function
+  const convertPrice = (price) => {
+    const rate = rates[currency] || 1;
+    // Price එක Rate එකෙන් වැඩි කරලා, දශම ස්ථාන අයින් කරලා ලස්සනට පෙන්වනවා
+    return Math.round(price * rate).toLocaleString();
   };
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, formatPrice }}>
+    <CurrencyContext.Provider value={{ currency, setCurrency, convertPrice }}>
       {children}
     </CurrencyContext.Provider>
   );
