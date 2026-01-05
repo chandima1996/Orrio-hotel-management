@@ -1,134 +1,140 @@
-import { useState, useEffect } from "react";
-import { MapPin, Star, Wifi, Droplets, Dumbbell, Utensils } from "lucide-react";
+import {
+  MapPin,
+  Star,
+  Wifi,
+  Droplets,
+  Dumbbell,
+  Utensils,
+  ArrowRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils"; // cn utility එක පාවිච්චි කරනවා classes එකතු කරන්න
+import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils"; // shadcn utils (nathi nam meka ain karala 'clsx' wage ekak use karanna puluwan, eth godak welawata shadcn ekka meka enawa)
 
-const getAmenityIcon = (amenity) => {
-  switch (amenity.toLowerCase()) {
-    case "wifi":
-      return <Wifi className="w-3 h-3" />;
-    case "pool":
-      return <Droplets className="w-3 h-3" />;
-    case "gym":
-      return <Dumbbell className="w-3 h-3" />;
-    case "restaurant":
-      return <Utensils className="w-3 h-3" />;
-    default:
-      return null;
-  }
+// Amenities වලට අදාළ අයිකන් තෝරන function එක
+const getAmenityIcon = (name) => {
+  const lowerName = name.toLowerCase();
+  if (lowerName.includes("wifi")) return <Wifi className="w-3 h-3" />;
+  if (lowerName.includes("pool")) return <Droplets className="w-3 h-3" />;
+  if (lowerName.includes("gym")) return <Dumbbell className="w-3 h-3" />;
+  if (lowerName.includes("dining") || lowerName.includes("restaurant"))
+    return <Utensils className="w-3 h-3" />;
+  return <Star className="w-3 h-3" />;
 };
 
-// layout prop එක අලුතෙන් එකතු කළා ("grid" or "list")
 const HotelCard = ({ hotel, layout = "grid" }) => {
-  const [currentImgIndex, setCurrentImgIndex] = useState(0);
+  if (!hotel) return null;
 
-  useEffect(() => {
-    if (hotel.images.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentImgIndex((prev) => (prev + 1) % hotel.images.length);
-      }, 4000);
-      return () => clearInterval(interval);
-    }
-  }, [hotel.images.length]);
+  const {
+    image = "https://via.placeholder.com/400",
+    name = "Unknown Hotel",
+    location = "Unknown Location",
+    rating = 0,
+    type = "Hotel",
+    price = 0,
+    amenities = [],
+    _id,
+  } = hotel;
 
   return (
-    <Card
-      className={cn(
-        "group relative overflow-hidden rounded-3xl border-white/10 bg-white/5 dark:bg-white/5 backdrop-blur-sm hover:shadow-2xl hover:shadow-primary/20 transition-all duration-300",
+    <div
+      className={`group bg-card border border-border rounded-3xl overflow-hidden hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 ${
         layout === "list"
           ? "flex flex-col md:flex-row h-auto md:h-64"
-          : "h-full flex flex-col"
-      )}
+          : "flex flex-col h-full"
+      }`}
     >
-      {/* 1. Image Section */}
+      {/* Image Section */}
       <div
-        className={cn(
-          "relative overflow-hidden bg-gray-900",
+        className={`relative overflow-hidden ${
           layout === "list" ? "w-full md:w-1/3 h-48 md:h-full" : "h-64 w-full"
-        )}
+        }`}
       >
-        {hotel.images.map((img, index) => (
-          <img
-            key={index}
-            src={img}
-            alt={`${hotel.name} - ${index}`}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
-              index === currentImgIndex
-                ? "opacity-100 scale-100"
-                : "opacity-0 scale-105"
-            }`}
-          />
-        ))}
-
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60" />
-
-        <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1 text-yellow-400 font-bold text-sm z-10 border border-white/10">
-          <Star className="w-3 h-3 fill-yellow-400" />
-          {hotel.rating}
+        <img
+          src={image}
+          alt={name}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+        />
+        <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold flex items-center gap-1">
+          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+          {rating}
         </div>
-
-        {hotel.featured && (
-          <Badge className="absolute top-4 left-4 bg-primary/90 hover:bg-primary backdrop-blur-md border-none text-white z-10 shadow-lg">
-            Featured
+        <div className="absolute top-4 left-4">
+          <Badge className="bg-white/90 text-black hover:bg-white">
+            {type}
           </Badge>
-        )}
+        </div>
       </div>
 
-      {/* 2. Content Section */}
+      {/* Content Section */}
       <div
-        className={cn(
-          "flex flex-col flex-grow",
-          layout === "list" ? "p-2" : ""
-        )}
+        className={`p-5 flex flex-col flex-grow ${
+          layout === "list" ? "w-full md:w-2/3 justify-between" : ""
+        }`}
       >
-        <CardContent className="p-5 flex-grow">
+        {/* Top Details */}
+        <div>
           <div className="flex justify-between items-start mb-2">
             <div>
-              <h3 className="text-xl font-bold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
-                {hotel.name}
+              <h3 className="text-xl font-bold mb-1 group-hover:text-primary transition-colors line-clamp-1">
+                {name}
               </h3>
-              <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
-                <MapPin className="w-3 h-3" />
-                {hotel.location}
+              <div className="flex items-center text-muted-foreground text-sm">
+                <MapPin className="w-3 h-3 mr-1" />
+                {location}
               </div>
             </div>
           </div>
 
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-            {hotel.description}
-          </p>
-
-          <div className="flex gap-2 mb-4">
-            {hotel.amenities.slice(0, 4).map((item, index) => (
+          {/* Amenities List (Icon + Name) */}
+          <div className="flex flex-wrap gap-2 mt-3 mb-4">
+            {amenities.slice(0, 3).map((amenity, index) => (
               <div
                 key={index}
-                className="flex items-center gap-1 text-xs text-muted-foreground bg-white/5 p-1.5 rounded-md border border-white/10"
+                className="flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-md text-muted-foreground border border-border"
               >
-                {getAmenityIcon(item)}
-                <span className="capitalize">{item}</span>
+                {getAmenityIcon(amenity)}
+                <span>{amenity}</span>
               </div>
             ))}
-          </div>
-        </CardContent>
-
-        <CardFooter className="p-5 pt-0 flex items-center justify-between border-t border-white/10 mt-auto">
-          <div>
-            <span className="text-xs text-muted-foreground">Start from</span>
-            <div className="flex items-end gap-1">
-              <span className="text-2xl font-bold text-primary">
-                ${hotel.cheapestPrice}
+            {amenities.length > 3 && (
+              <span className="text-xs bg-muted px-2 py-1 rounded-md text-muted-foreground">
+                +{amenities.length - 3}
               </span>
-              <span className="text-sm text-muted-foreground mb-1">/night</span>
+            )}
+          </div>
+        </div>
+
+        {/* Price & Button */}
+        <div
+          className={`mt-auto flex items-center justify-between pt-4 border-t border-border ${
+            layout === "list" ? "border-t-0 md:border-t" : ""
+          }`}
+        >
+          <div>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground block font-semibold">
+              Starting from
+            </span>
+            <div className="flex items-end gap-1">
+              <span className="text-2xl font-bold text-primary">${price}</span>
+              <span className="text-sm text-muted-foreground mb-1">
+                / night
+              </span>
             </div>
           </div>
-          <Button className="rounded-xl bg-white/10 hover:bg-primary hover:text-white text-foreground border border-white/10 transition-all">
-            View Details
-          </Button>
-        </CardFooter>
+
+          <Link to={`/hotels/${_id}`}>
+            <Button
+              size="sm"
+              className="rounded-xl group-hover:translate-x-1 transition-transform"
+            >
+              View Details <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </Link>
+        </div>
       </div>
-    </Card>
+    </div>
   );
 };
 

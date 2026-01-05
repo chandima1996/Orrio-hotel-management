@@ -1,13 +1,19 @@
 import { Routes, Route } from "react-router-dom";
+
+// Components
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Featured from "./components/Featured";
 import Stats from "./components/Stats";
 import Footer from "./components/Footer";
-import FindHotels from "./pages/FindHotels";
-import Contact from "./pages/Contact"; // New Import
-import About from "./pages/About"; // New Import
 import { ThemeProvider } from "./components/theme-provider";
+
+// Pages
+import FindHotels from "./pages/FindHotels";
+import Contact from "./pages/Contact";
+import About from "./pages/About";
+import Legal from "./pages/Legal"; // නම වෙනස් කළා (Step 3 බලන්න)
+import SingleHotel from "./pages/SingleHotel";
 
 // Home Page Layout
 const Home = () => (
@@ -27,8 +33,11 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/find-hotels" element={<FindHotels />} />
-            <Route path="/contact" element={<Contact />} /> {/* Route added */}
-            <Route path="/about" element={<About />} /> {/* Route added */}
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/privacy" element={<Legal />} />{" "}
+            {/* අලුත් Component එක */}
+            <Route path="/hotels/:id" element={<SingleHotel />} />
           </Routes>
         </div>
         <Footer />

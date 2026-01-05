@@ -1,238 +1,191 @@
 import { useState, useMemo } from "react";
 import {
   Search,
+  MapPin,
+  Calendar,
+  Users,
   SlidersHorizontal,
+  Trash2,
+  Check,
   LayoutGrid,
   List,
-  Calendar as CalendarIcon,
-  Users,
-  Sparkles,
-  Minus,
-  Plus,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { format, addDays } from "date-fns";
-
-// Components
-import HotelCard from "../components/HotelCard";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import HotelCard from "@/components/HotelCard";
 
-// --- Mock Data ---
-const allHotels = [
+// --- MOCK DATA ---
+const HOTELS_DATA = [
   {
     _id: "1",
     name: "Crystal Sands Resort",
-    location: "Maldives",
-    description: "Luxury overwater villas with direct ocean access.",
-    images: [
-      "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?q=80&w=1000",
-      "https://images.unsplash.com/photo-1540541338287-41700207dee6?q=80&w=1000",
-    ],
-    cheapestPrice: 450,
+    location: "Maldives, South Atoll",
+    price: 450,
     rating: 4.8,
-    amenities: ["wifi", "pool", "spa", "restaurant"],
+    reviews: 128,
+    image:
+      "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?q=80&w=1000",
     type: "Resort",
-    featured: true,
+    amenities: ["Wifi", "Infinity Pool", "Spa", "Dining"],
   },
   {
     _id: "2",
-    name: "Neon City Hotel",
-    location: "Tokyo, Japan",
-    description: "Futuristic stay in the heart of Tokyo.",
-    images: [
-      "https://images.unsplash.com/photo-1590447158019-883d8d5f8bc7?q=80&w=1000",
-      "https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?q=80&w=1000",
-    ],
-    cheapestPrice: 220,
+    name: "Urban Heights Hotel",
+    location: "New York, USA",
+    price: 220,
     rating: 4.5,
-    amenities: ["wifi", "gym", "bar", "ac"],
+    reviews: 85,
+    image:
+      "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1000",
     type: "Hotel",
-    featured: true,
+    amenities: ["Wifi", "Gym"],
   },
   {
     _id: "3",
-    name: "Alpine Glass Lodge",
-    location: "Swiss Alps",
-    description: "Sleep under the stars in glass-roofed igloos.",
-    images: [
-      "https://images.unsplash.com/photo-1519449556851-5720b33024e7?q=80&w=1000",
-      "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=1000",
-    ],
-    cheapestPrice: 680,
+    name: "Azure Villa Escape",
+    location: "Santorini, Greece",
+    price: 850,
     rating: 4.9,
-    amenities: ["wifi", "hwater", "parking", "restaurant"],
+    reviews: 210,
+    image:
+      "https://images.unsplash.com/photo-1540541338287-41700207dee6?q=80&w=1000",
     type: "Villa",
-    featured: true,
+    amenities: ["Wifi", "Private Pool", "Kitchen"],
   },
   {
     _id: "4",
-    name: "Desert Mirage",
-    location: "Dubai, UAE",
-    description: "Sanctuary in the dunes featuring private pools.",
-    images: [
-      "https://images.unsplash.com/photo-1582719508461-905c673771fd?q=80&w=1000",
-    ],
-    cheapestPrice: 350,
+    name: "Mountain View Cabin",
+    location: "Aspen, Colorado",
+    price: 350,
     rating: 4.7,
-    amenities: ["pool", "ac", "wifi", "bar"],
-    type: "Resort",
-    featured: false,
+    reviews: 95,
+    image:
+      "https://images.unsplash.com/photo-1510798831971-661eb04b3739?q=80&w=1000",
+    type: "Cabin",
+    amenities: ["Fireplace", "Wifi"],
   },
   {
     _id: "5",
-    name: "Urban Loft",
-    location: "New York, USA",
-    description: "Industrial chic meets modern luxury.",
-    images: [
-      "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?q=80&w=1000",
-    ],
-    cheapestPrice: 550,
+    name: "Tokyo Grand Hotel",
+    location: "Tokyo, Japan",
+    price: 180,
     rating: 4.4,
-    amenities: ["wifi", "gym", "bar"],
-    type: "Apartment",
-    featured: false,
-  },
-  {
-    _id: "6",
-    name: "Cozy Cabin",
-    location: "Norway",
-    description: "Wooden cabin surrounded by pine forests.",
-    images: [
-      "https://images.unsplash.com/photo-1449156493391-d2cfa28e468b?q=80&w=1000",
-    ],
-    cheapestPrice: 150,
-    rating: 4.6,
-    amenities: ["wifi", "parking", "hwater"],
-    type: "Villa",
-    featured: false,
+    reviews: 320,
+    image:
+      "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=1000",
+    type: "Hotel",
+    amenities: ["Wifi", "Gym", "Spa"],
   },
 ];
 
-// --- Filter Sidebar Component ---
-const FilterSidebar = ({ filters, setFilters }) => {
+// --- FILTER SIDEBAR ---
+const FilterSidebar = ({ filters, setFilters, resetFilters }) => {
+  const toggleFilter = (category, value) => {
+    setFilters((prev) => {
+      const current = prev[category];
+      const updated = current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value];
+      return { ...prev, [category]: updated };
+    });
+  };
+
   return (
-    <div className="space-y-8">
-      {/* Price Range */}
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Price Range</h3>
+    <div className="space-y-8 bg-card border border-border p-6 rounded-3xl h-fit sticky top-24">
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-xl flex items-center gap-2">
+          <SlidersHorizontal className="w-5 h-5" /> Filters
+        </h3>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={resetFilters}
+          className="text-destructive hover:bg-destructive/10 h-8 px-2 text-xs"
+        >
+          <Trash2 className="w-3 h-3 mr-1" /> Clear All
+        </Button>
+      </div>
+
+      {/* Price */}
+      <div>
+        <h4 className="font-semibold mb-4">Price Range</h4>
         <Slider
-          defaultValue={[filters.priceRange[1]]}
+          defaultValue={[0, 1000]}
+          value={filters.priceRange}
           max={1000}
           step={10}
-          value={[filters.priceRange[1]]}
-          onValueChange={(value) =>
-            setFilters({ ...filters, priceRange: [0, value[0]] })
+          onValueChange={(val) =>
+            setFilters((prev) => ({ ...prev, priceRange: val }))
           }
-          className="my-4"
+          className="mb-4"
         />
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>$0</span>
-          <span className="font-bold text-primary">
-            ${filters.priceRange[1]}
-          </span>
+          <span>${filters.priceRange[0]}</span>
+          <span>${filters.priceRange[1]}+</span>
         </div>
       </div>
-      <Separator />
+
       {/* Property Type */}
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Property Type</h3>
+      <div>
+        <h4 className="font-semibold mb-3">Property Type</h4>
         <div className="space-y-2">
-          {["Hotel", "Resort", "Villa", "Apartment"].map((type) => (
-            <div key={type} className="flex items-center space-x-2">
-              <Checkbox
-                id={type}
-                checked={filters.types.includes(type)}
-                onCheckedChange={(checked) => {
-                  if (checked)
-                    setFilters({ ...filters, types: [...filters.types, type] });
-                  else
-                    setFilters({
-                      ...filters,
-                      types: filters.types.filter((t) => t !== type),
-                    });
-                }}
-              />
-              <Label htmlFor={type} className="font-normal cursor-pointer">
-                {type}
-              </Label>
+          {["Hotel", "Resort", "Villa", "Cabin"].map((type) => (
+            <div
+              key={type}
+              className="flex items-center space-x-2 cursor-pointer"
+              onClick={() => toggleFilter("types", type)}
+            >
+              <div
+                className={`w-5 h-5 rounded border border-primary flex items-center justify-center ${
+                  filters.types.includes(type)
+                    ? "bg-primary text-white"
+                    : "bg-transparent"
+                }`}
+              >
+                {filters.types.includes(type) && <Check className="w-3 h-3" />}
+              </div>
+              <span className="text-sm">{type}</span>
             </div>
           ))}
         </div>
       </div>
-      <Separator />
+
       {/* Amenities */}
-      <div className="space-y-4">
-        <h3 className="font-semibold text-lg">Amenities</h3>
+      <div>
+        <h4 className="font-semibold mb-3">Amenities</h4>
         <div className="space-y-2">
-          {["Wifi", "Pool", "Gym", "Spa", "Restaurant", "Parking"].map(
-            (item) => (
-              <div key={item} className="flex items-center space-x-2">
-                <Checkbox
-                  id={item}
-                  checked={filters.amenities.includes(item.toLowerCase())}
-                  onCheckedChange={(checked) => {
-                    const value = item.toLowerCase();
-                    if (checked)
-                      setFilters({
-                        ...filters,
-                        amenities: [...filters.amenities, value],
-                      });
-                    else
-                      setFilters({
-                        ...filters,
-                        amenities: filters.amenities.filter((a) => a !== value),
-                      });
-                  }}
-                />
-                <Label htmlFor={item} className="font-normal cursor-pointer">
-                  {item}
-                </Label>
+          {["Wifi", "Pool", "Spa", "Gym", "Kitchen"].map((amenity) => (
+            <div
+              key={amenity}
+              className="flex items-center space-x-2 cursor-pointer"
+              onClick={() => toggleFilter("amenities", amenity)}
+            >
+              <div
+                className={`w-5 h-5 rounded border border-primary flex items-center justify-center ${
+                  filters.amenities.includes(amenity)
+                    ? "bg-primary text-white"
+                    : "bg-transparent"
+                }`}
+              >
+                {filters.amenities.includes(amenity) && (
+                  <Check className="w-3 h-3" />
+                )}
               </div>
-            )
-          )}
+              <span className="text-sm">{amenity}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 };
 
+// --- MAIN PAGE ---
 const FindHotels = () => {
-  // --- States ---
-  const [searchQuery, setSearchQuery] = useState(""); // Connected to the Big Search Bar
-  const [sortOption, setSortOption] = useState("recommended");
-  const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
-
-  // Advanced Search States
-  const [date, setDate] = useState({
-    from: new Date(),
-    to: addDays(new Date(), 1),
-  });
-  const [guests, setGuests] = useState({ adults: 1, children: 0 });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState("grid"); // Layout State
 
   const [filters, setFilters] = useState({
     priceRange: [0, 1000],
@@ -240,251 +193,138 @@ const FindHotels = () => {
     amenities: [],
   });
 
-  // --- Filter Logic ---
-  const filteredHotels = useMemo(() => {
-    return allHotels
-      .filter((hotel) => {
-        const matchesSearch =
-          hotel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          hotel.location.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesPrice = hotel.cheapestPrice <= filters.priceRange[1];
-        const matchesType =
-          filters.types.length === 0 || filters.types.includes(hotel.type);
-        const matchesAmenities =
-          filters.amenities.length === 0 ||
-          filters.amenities.every((a) => hotel.amenities.includes(a));
-        return matchesSearch && matchesPrice && matchesType && matchesAmenities;
-      })
-      .sort((a, b) => {
-        if (sortOption === "priceLow") return a.cheapestPrice - b.cheapestPrice;
-        if (sortOption === "priceHigh")
-          return b.cheapestPrice - a.cheapestPrice;
-        if (sortOption === "rating") return b.rating - a.rating;
-        return 0;
-      });
-  }, [searchQuery, filters, sortOption]);
-
-  // Guest Helper
-  const updateGuests = (type, operation) => {
-    setGuests((prev) => ({
-      ...prev,
-      [type]:
-        operation === "inc" ? prev[type] + 1 : Math.max(0, prev[type] - 1),
-    }));
+  const resetAllFilters = () => {
+    setFilters({ priceRange: [0, 1000], types: [], amenities: [] });
+    setSearchQuery("");
   };
+
+  const filteredHotels = useMemo(() => {
+    return HOTELS_DATA.filter((hotel) => {
+      const matchesSearch =
+        hotel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        hotel.location.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesPrice =
+        hotel.price >= filters.priceRange[0] &&
+        hotel.price <= filters.priceRange[1];
+      const matchesType =
+        filters.types.length === 0 || filters.types.includes(hotel.type);
+
+      // Simple amenities check (if selected amenities exist in hotel)
+      const matchesAmenities =
+        filters.amenities.length === 0 ||
+        filters.amenities.every((a) =>
+          hotel.amenities.some((ha) =>
+            ha.toLowerCase().includes(a.toLowerCase())
+          )
+        );
+
+      return matchesSearch && matchesPrice && matchesType && matchesAmenities;
+    });
+  }, [searchQuery, filters]);
 
   return (
     <div className="min-h-screen bg-background pt-24 pb-10">
       <div className="container mx-auto px-4">
-        {/* --- 1. Big Advanced Search Bar (Top) --- */}
-        <div className="max-w-5xl mx-auto mb-12 w-full bg-card border border-border p-3 rounded-3xl shadow-2xl shadow-primary/5 flex flex-col lg:flex-row items-center gap-3 relative z-20">
-          {/* Location / Query */}
+        {/* Search Bar Section */}
+        <div className="max-w-5xl mx-auto mb-16 w-full bg-card border border-border p-3 rounded-3xl shadow-2xl shadow-primary/5 flex flex-col lg:flex-row items-center gap-3 relative z-20">
           <div className="flex-1 w-full relative group px-2">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
-              <Sparkles className="w-5 h-5" />
+            <label className="text-xs text-muted-foreground ml-3 mb-1 block">
+              Location or Hotel
+            </label>
+            <div className="flex items-center gap-3 px-3">
+              <MapPin className="w-5 h-5 text-muted-foreground" />
+              <Input
+                placeholder="Where are you going?"
+                className="border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-base font-medium h-auto placeholder:text-muted-foreground/50"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-            <input
-              type="text"
-              placeholder="Where to? (e.g., 'Maldives', 'Beach')"
-              className="w-full h-12 pl-12 pr-4 bg-transparent border-none focus:outline-none text-foreground placeholder:text-muted-foreground text-lg"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
           </div>
 
-          {/* Separator (Desktop) */}
-          <div className="hidden lg:block w-[1px] h-10 bg-border" />
+          <div className="w-[1px] h-10 bg-border hidden lg:block"></div>
 
-          {/* Date Picker */}
-          <div className="w-full lg:w-auto">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full lg:w-[260px] h-12 justify-start text-left font-normal hover:bg-muted"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                  {date?.from
-                    ? date.to
-                      ? `${format(date.from, "MMM dd")} - ${format(
-                          date.to,
-                          "MMM dd"
-                        )}`
-                      : format(date.from, "MMM dd, y")
-                    : "Select Dates"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={date?.from}
-                  selected={date}
-                  onSelect={setDate}
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
+          <div className="flex-1 w-full relative group px-2 border-t lg:border-t-0 border-border pt-2 lg:pt-0">
+            <label className="text-xs text-muted-foreground ml-3 mb-1 block">
+              Dates
+            </label>
+            <div className="flex items-center gap-3 px-3 cursor-pointer">
+              <Calendar className="w-5 h-5 text-muted-foreground" />
+              <span className="text-base font-medium text-muted-foreground">
+                Add Dates
+              </span>
+            </div>
           </div>
 
-          <div className="hidden lg:block w-[1px] h-10 bg-border" />
+          <div className="w-[1px] h-10 bg-border hidden lg:block"></div>
 
-          {/* Guest Selector */}
-          <div className="w-full lg:w-auto">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full lg:w-[200px] h-12 justify-start hover:bg-muted"
-                >
-                  <Users className="mr-2 h-4 w-4 text-primary" />
-                  {guests.adults} Adults, {guests.children} Kids
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-4">
-                <div className="space-y-4">
-                  <h4 className="font-medium leading-none text-muted-foreground">
-                    Guests
-                  </h4>
-                  {["adults", "children"].map((type) => (
-                    <div
-                      key={type}
-                      className="flex items-center justify-between capitalize"
-                    >
-                      <span className="text-sm font-medium">{type}</span>
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => updateGuests(type, "dec")}
-                          disabled={
-                            (type === "adults" && guests.adults <= 1) ||
-                            (type === "children" && guests.children <= 0)
-                          }
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-4 text-center">{guests[type]}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => updateGuests(type, "inc")}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+          <div className="flex-1 w-full relative group px-2 border-t lg:border-t-0 border-border pt-2 lg:pt-0">
+            <label className="text-xs text-muted-foreground ml-3 mb-1 block">
+              Guests
+            </label>
+            <div className="flex items-center gap-3 px-3 cursor-pointer">
+              <Users className="w-5 h-5 text-muted-foreground" />
+              <span className="text-base font-medium text-muted-foreground">
+                Add Guests
+              </span>
+            </div>
           </div>
 
-          {/* Search Button */}
-          <Button className="w-full lg:w-auto h-12 px-8 rounded-2xl bg-primary hover:bg-blue-600 text-lg font-semibold shadow-md">
-            Search
+          <Button
+            size="lg"
+            className="rounded-2xl h-14 px-8 w-full lg:w-auto shadow-lg shadow-primary/25"
+          >
+            <Search className="w-5 h-5 mr-2" /> Search
           </Button>
         </div>
 
-        {/* --- 2. Main Content Grid --- */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Sidebar Filters */}
-          <div className="hidden md:block col-span-1 h-fit sticky top-24 p-6 rounded-2xl border border-border bg-card/50 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="font-bold text-xl">Filters</h2>
-              {(filters.types.length > 0 ||
-                filters.amenities.length > 0 ||
-                filters.priceRange[1] < 1000) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-muted-foreground hover:text-destructive"
-                  onClick={() =>
-                    setFilters({
-                      priceRange: [0, 1000],
-                      types: [],
-                      amenities: [],
-                    })
-                  }
-                >
-                  Reset
-                </Button>
-              )}
-            </div>
-            <FilterSidebar filters={filters} setFilters={setFilters} />
+        {/* Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <FilterSidebar
+              filters={filters}
+              setFilters={setFilters}
+              resetFilters={resetAllFilters}
+            />
           </div>
 
-          {/* Results Section */}
-          <div className="col-span-1 md:col-span-3">
-            {/* Results Header & Controls */}
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-              <div className="text-muted-foreground">
-                Found{" "}
-                <span className="font-bold text-foreground">
-                  {filteredHotels.length}
-                </span>{" "}
-                properties
-              </div>
+          {/* Results */}
+          <div className="lg:col-span-3">
+            {/* Header: Count, Sort, Toggle */}
+            <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <h2 className="text-2xl font-bold">
+                {filteredHotels.length} Properties found
+              </h2>
+              <div className="flex items-center gap-3">
+                <Badge
+                  variant="outline"
+                  className="px-3 py-1 cursor-pointer hover:bg-muted h-9"
+                >
+                  Sort by: Recommended
+                </Badge>
 
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                {/* Mobile Filters Trigger */}
-                <div className="md:hidden">
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="outline" className="gap-2">
-                        <SlidersHorizontal className="w-4 h-4" /> Filters
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="overflow-y-auto">
-                      <SheetHeader className="mb-6">
-                        <SheetTitle>Filters</SheetTitle>
-                      </SheetHeader>
-                      <FilterSidebar
-                        filters={filters}
-                        setFilters={setFilters}
-                      />
-                    </SheetContent>
-                  </Sheet>
-                </div>
-
-                {/* Sort Dropdown */}
-                <Select value={sortOption} onValueChange={setSortOption}>
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="recommended">Recommended</SelectItem>
-                    <SelectItem value="priceLow">Price: Low to High</SelectItem>
-                    <SelectItem value="priceHigh">
-                      Price: High to Low
-                    </SelectItem>
-                    <SelectItem value="rating">Top Rated</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {/* View Toggles (Grid vs List) */}
-                <div className="flex bg-muted p-1 rounded-lg border border-border">
+                {/* Layout Toggle Buttons */}
+                <div className="bg-muted p-1 rounded-lg flex border border-border items-center">
                   <button
                     onClick={() => setViewMode("grid")}
-                    className={cn(
-                      "p-2 rounded-md transition-all",
+                    className={`p-2 rounded-md transition-all ${
                       viewMode === "grid"
                         ? "bg-background shadow-sm text-primary"
                         : "text-muted-foreground hover:text-foreground"
-                    )}
+                    }`}
+                    title="Grid View"
                   >
                     <LayoutGrid className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("list")}
-                    className={cn(
-                      "p-2 rounded-md transition-all",
+                    className={`p-2 rounded-md transition-all ${
                       viewMode === "list"
                         ? "bg-background shadow-sm text-primary"
                         : "text-muted-foreground hover:text-foreground"
-                    )}
+                    }`}
+                    title="List View"
                   >
                     <List className="w-4 h-4" />
                   </button>
@@ -492,53 +332,30 @@ const FindHotels = () => {
               </div>
             </div>
 
-            {/* Hotels List */}
+            {/* Hotel Cards Display */}
             {filteredHotels.length > 0 ? (
-              <motion.div
-                layout
-                className={cn(
-                  "grid gap-6",
+              <div
+                className={
                   viewMode === "grid"
-                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                    : "grid-cols-1"
-                )}
+                    ? "grid grid-cols-1 md:grid-cols-2 gap-6"
+                    : "flex flex-col gap-6"
+                }
               >
-                <AnimatePresence>
-                  {filteredHotels.map((hotel) => (
-                    <motion.div
-                      key={hotel._id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      {/* Pass viewMode as 'layout' prop */}
-                      <HotelCard hotel={hotel} layout={viewMode} />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </motion.div>
+                {filteredHotels.map((hotel) => (
+                  <HotelCard key={hotel._id} hotel={hotel} layout={viewMode} />
+                ))}
+              </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-4">
-                  <Search className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">No hotels found</h3>
-                <p className="text-muted-foreground mb-6">
-                  Try adjusting your search.
-                </p>
+              <div className="text-center py-20 bg-muted/30 rounded-3xl border border-dashed border-border">
+                <h3 className="text-xl font-bold text-muted-foreground">
+                  No hotels found.
+                </h3>
                 <Button
-                  onClick={() => {
-                    setFilters({
-                      priceRange: [0, 1000],
-                      types: [],
-                      amenities: [],
-                    });
-                    setSearchQuery("");
-                  }}
+                  variant="link"
+                  onClick={resetAllFilters}
+                  className="mt-2 text-primary"
                 >
-                  Clear all filters
+                  Clear Filters
                 </Button>
               </div>
             )}

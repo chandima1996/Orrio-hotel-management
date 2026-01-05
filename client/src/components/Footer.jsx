@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 const Footer = () => {
   return (
     <footer className="bg-background text-foreground pt-20 pb-10 border-t border-border relative overflow-hidden transition-colors duration-300">
-      {/* Background Glow Effect (Adjusted for both themes) */}
+      {/* Background Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-primary/5 blur-[100px] rounded-full pointer-events-none" />
 
       <div className="container mx-auto px-4 relative z-10">
@@ -35,24 +35,46 @@ const Footer = () => {
             </p>
           </div>
 
-          {/* 2. Quick Links */}
+          {/* 2. Quick Links (Updated with real Links) */}
           <div>
             <h3 className="text-lg font-bold mb-6 text-foreground">Company</h3>
             <ul className="space-y-4">
-              {["About Us", "Careers", "Blog", "Press"].map((item) => (
-                <li key={item}>
-                  <Link
-                    to="#"
-                    className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                  >
-                    {item}
-                  </Link>
-                </li>
-              ))}
+              <li>
+                <Link
+                  to="/about"
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                >
+                  About Us
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/careers"
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                >
+                  Careers
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/blog"
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                >
+                  Blog
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/press"
+                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
+                >
+                  Press
+                </Link>
+              </li>
             </ul>
           </div>
 
-          {/* 3. Support & Contact */}
+          {/* 3. Support & Contact (Updated with Privacy Policy) */}
           <div>
             <h3 className="text-lg font-bold mb-6 text-foreground">Support</h3>
             <ul className="space-y-4 text-sm text-muted-foreground">
@@ -68,18 +90,27 @@ const Footer = () => {
                 <Mail className="w-4 h-4 text-primary" />
                 <span>support@orrio.com</span>
               </li>
-              <li>
+              {/* Links */}
+              <li className="pt-2">
                 <Link
                   to="/contact"
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors block"
                 >
                   Contact Us
                 </Link>
               </li>
               <li>
                 <Link
+                  to="/privacy"
+                  className="hover:text-primary transition-colors block"
+                >
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link
                   to="/terms"
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary transition-colors block"
                 >
                   Terms of Service
                 </Link>
@@ -121,7 +152,6 @@ const Footer = () => {
             &copy; {new Date().getFullYear()} Orrio Inc. All rights reserved.
           </p>
 
-          {/* Social Icons */}
           <div className="flex items-center gap-4">
             {[Facebook, Twitter, Instagram, Linkedin].map((Icon, index) => (
               <a
