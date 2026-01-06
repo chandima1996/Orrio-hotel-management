@@ -1,6 +1,7 @@
 import Hotel from "../models/Hotel.js";
 
-// 1. Create Hotel
+// Create, Update, Delete, GetSingle එහෙමම තියන්න...
+
 export const createHotel = async (req, res, next) => {
   const newHotel = new Hotel(req.body);
   try {
@@ -11,13 +12,12 @@ export const createHotel = async (req, res, next) => {
   }
 };
 
-// 2. Update Hotel
 export const updateHotel = async (req, res, next) => {
   try {
     const updatedHotel = await Hotel.findByIdAndUpdate(
       req.params.id,
-      { $set: req.body }, // එවපු ඩේටා ටික විතරක් update වෙනවා
-      { new: true } // Update වුනාට පස්සේ අලුත් data ටික return වෙනවා
+      { $set: req.body },
+      { new: true }
     );
     res.status(200).json(updatedHotel);
   } catch (err) {
@@ -25,7 +25,6 @@ export const updateHotel = async (req, res, next) => {
   }
 };
 
-// 3. Delete Hotel
 export const deleteHotel = async (req, res, next) => {
   try {
     await Hotel.findByIdAndDelete(req.params.id);
@@ -35,10 +34,8 @@ export const deleteHotel = async (req, res, next) => {
   }
 };
 
-// 4. Get Single Hotel
 export const getHotel = async (req, res, next) => {
   try {
-    // Hotel එක ගන්නකොටම එකේ තියෙන Rooms ටිකත් විස්තර සහිතව (populate) ගේන්න ඕනේ
     const hotel = await Hotel.findById(req.params.id).populate("rooms");
     res.status(200).json(hotel);
   } catch (err) {
@@ -46,64 +43,98 @@ export const getHotel = async (req, res, next) => {
   }
 };
 
+// --- SEARCH & FILTER LOGIC ---
 export const getHotels = async (req, res, next) => {
-  const { min, max, limit, page, city, type, featured, sort } = req.query;
-
   try {
-    // 1. Query Object එක හදාගැනීම
+    // 1. amenities parameter එකත් මෙතනට ගන්න
+    const { min, max, limit, type, featured, search, sort, amenities } =
+      req.query;
+
     let query = {};
 
-    // Search by City (Case insensitive)
-    if (city) {
-      query.location = { $regex: city, $options: "i" };
+    // --- Super Search Logic (Existing) ---
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { country: { $regex: search, $options: "i" } },
+        { city: { $regex: search, $options: "i" } },
+        { address: { $regex: search, $options: "i" } },
+        { type: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { amenities: { $regex: search, $options: "i" } },
+      ];
     }
 
-    // Filter by Type
-    if (type) {
-      query.type = type;
+    // --- Type Filter ---
+    if (type && type !== "All") {
+      if (search) {
+        query = { $and: [query, { type: type }] };
+      } else {
+        query.type = type;
+      }
     }
 
-    // Filter by Price Range
+    // --- Price Filter ---
     if (min || max) {
-      query["price.normal"] = {
-        $gte: min || 0,
-        $lte: max || 99999,
-      };
+      const priceQuery = {};
+      if (min) priceQuery.$gte = Number(min);
+      if (max) priceQuery.$lte = Number(max);
+
+      if (Object.keys(query).length > 0) {
+        if (!query.$and) query.$and = [];
+        query.$and.push({ "price.normal": priceQuery });
+      } else {
+        query["price.normal"] = priceQuery;
+      }
     }
 
-    // Filter by Featured
+    // --- NEW: Amenities Filter Logic ---
+    if (amenities) {
+      // Frontend එකෙන් එන්නේ "Wifi,Pool,Gym" වගේ string එකක්
+      const amenitiesList = amenities.split(",");
+
+      // $all පාවිච්චි කරන්නේ තෝරාගත් *සියලුම* පහසුකම් තියෙන ඒවා විතරක් පෙන්නන්න.
+      const amenityQuery = { amenities: { $all: amenitiesList } };
+
+      if (Object.keys(query).length > 0) {
+        if (!query.$and) query.$and = [];
+        query.$and.push(amenityQuery);
+      } else {
+        Object.assign(query, amenityQuery);
+      }
+    }
+
+    // --- Featured Filter ---
     if (featured) {
       query.featured = featured === "true";
     }
 
-    // 2. Sorting Logic
+    // --- Sorting ---
     let sortOptions = {};
-    if (sort === "price_asc") sortOptions["price.normal"] = 1; // මිල අඩු සිට වැඩි
-    if (sort === "price_desc") sortOptions["price.normal"] = -1; // මිල වැඩි සිට අඩු
-    if (sort === "rating") sortOptions["rating"] = -1; // හොඳම rating මුලට
-    if (sort === "newest") sortOptions["createdAt"] = -1; // අලුත් ඒවා මුලට
+    if (sort === "price_asc") sortOptions["price.normal"] = 1;
+    else if (sort === "price_desc") sortOptions["price.normal"] = -1;
+    else if (sort === "rating") sortOptions["rating"] = -1;
+    else sortOptions["createdAt"] = -1;
 
-    // 3. Pagination Logic
-    const pageNumber = parseInt(page) || 1;
-    const limitNumber = parseInt(limit) || 6; // පිටුවකට හෝටල් 6යි
-    const skip = (pageNumber - 1) * limitNumber;
+    // --- Pagination ---
+    const page = parseInt(req.query.page) || 1;
+    const limitVal = parseInt(req.query.limit) || 9;
+    const skip = (page - 1) * limitVal;
 
-    // 4. Data Fetching
     const hotels = await Hotel.find(query)
       .sort(sortOptions)
-      .limit(limitNumber)
-      .skip(skip);
+      .skip(skip)
+      .limit(limitVal);
 
-    // මුළු හෝටල් ගණන (Pagination සඳහා)
     const totalCount = await Hotel.countDocuments(query);
 
     res.status(200).json({
       hotels,
       totalCount,
-      totalPages: Math.ceil(totalCount / limitNumber),
-      currentPage: pageNumber,
+      totalPages: Math.ceil(totalCount / limitVal),
+      currentPage: page,
     });
   } catch (err) {
-    res.status(500).json(err);
+    next(err);
   }
 };

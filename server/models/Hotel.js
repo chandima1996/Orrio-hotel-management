@@ -10,14 +10,20 @@ const hotelSchema = new mongoose.Schema(
       type: String,
       required: true, // Example: "Luxury Resort", "Villa", "Hotel"
     },
-    location: {
+    // --- NEW LOCATION FIELDS ---
+    country: {
       type: String,
-      required: true, // Example: "Maldives, South Atoll"
+      required: true, // Example: "Sri Lanka"
+    },
+    city: {
+      type: String,
+      required: true, // Example: "Colombo" (Town)
     },
     address: {
       type: String,
-      required: true,
+      required: true, // Example: "No 10, Galle Road"
     },
+    // ---------------------------
     contact: {
       type: String,
       required: true,
@@ -30,11 +36,9 @@ const hotelSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    // --- Images ---
     images: {
-      type: [String], // Image URLs array ekak
+      type: [String],
     },
-    // --- Pricing Section (Oya illapu widiyata) ---
     price: {
       normal: {
         type: Number,
@@ -42,10 +46,9 @@ const hotelSchema = new mongoose.Schema(
       },
       discount: {
         type: Number,
-        default: 0, // Discount ekak nathnam 0
+        default: 0,
       },
     },
-    // --- Ratings (Frontend eke thibuna key fields) ---
     rating: {
       type: Number,
       min: 0,
@@ -53,12 +56,12 @@ const hotelSchema = new mongoose.Schema(
       default: 0,
     },
     reviews: {
-      type: Number, // Review count eka
+      type: Number,
       default: 0,
     },
-    // --- Amenities (Selection List 1) ---
     amenities: {
       type: [String],
+      // Enums ටික එහෙමම තියන්න
       enum: [
         "High-Speed Wifi",
         "Infinity Pool",
@@ -72,7 +75,6 @@ const hotelSchema = new mongoose.Schema(
         "24/7 Concierge",
       ],
     },
-    // --- What this place offers (Selection List 2) ---
     features: {
       type: [String],
       enum: [
@@ -88,11 +90,10 @@ const hotelSchema = new mongoose.Schema(
         "Laundry Service",
       ],
     },
-    // --- Relationships ---
     rooms: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Room", // Room model eka link karanawa
+        ref: "Room",
       },
     ],
     featured: {

@@ -57,11 +57,12 @@ function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Navbar />
-      <main className="min-h-screen bg-background text-foreground font-sans flex flex-col pt-20">
+      <main className="flex flex-col min-h-screen pt-20 font-sans bg-background text-foreground">
         <div className="flex-grow">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/find-hotels" element={<FindHotels />} />
+            <Route path="/hotels/:id" element={<SingleHotel />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/about" element={<About />} />
             <Route path="/privacy" element={<Legal />} />

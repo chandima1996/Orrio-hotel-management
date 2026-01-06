@@ -2,30 +2,34 @@ import { createContext, useContext, useState } from "react";
 
 const CurrencyContext = createContext();
 
+export const useCurrency = () => useContext(CurrencyContext);
+
 export const CurrencyProvider = ({ children }) => {
-  // Default currency is USD
   const [currency, setCurrency] = useState("USD");
 
-  // Exchange Rates (Static values for now)
-  const rates = {
-    USD: 1,
-    LKR: 300, // 1 USD = 300 LKR (Approx)
-    EUR: 0.92,
-    GBP: 0.79,
-  };
+  // මෙන්න මේ variable එක කලින් කෝඩ් එකේ තිබුනේ නෑ, ඒකයි Error එක ආවේ
+  const exchangeRate = 300; // දැනට අපි 1 USD = 300 LKR කියලා ගමු
 
   // Price Conversion Function
-  const convertPrice = (price) => {
-    const rate = rates[currency] || 1;
-    // Price එක Rate එකෙන් වැඩි කරලා, දශම ස්ථාන අයින් කරලා ලස්සනට පෙන්වනවා
-    return Math.round(price * rate).toLocaleString();
+  const convertPrice = (priceInUSD) => {
+    if (currency === "LKR") {
+      // ඩොලර් නම් රුපියල් කරන්න
+      return (priceInUSD * exchangeRate).toLocaleString();
+    }
+    // නැත්නම් ඩොලර් විදියටම එවන්න
+    return priceInUSD.toLocaleString();
   };
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, convertPrice }}>
+    <CurrencyContext.Provider
+      value={{
+        currency,
+        setCurrency,
+        convertPrice,
+        exchangeRate, // දැන් මේක define කරලා තියෙන නිසා error එන්නේ නෑ
+      }}
+    >
       {children}
     </CurrencyContext.Provider>
   );
 };
-
-export const useCurrency = () => useContext(CurrencyContext);

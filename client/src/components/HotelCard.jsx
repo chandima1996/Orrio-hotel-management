@@ -10,13 +10,12 @@ import {
   Wind,
   Umbrella,
   ConciergeBell,
-  MonitorPlay,
   Coffee,
   ArrowRight,
+  CheckCircle2,
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 
-// 1. Database එකේ තියෙන නම් වලට Icons ගැලපීම
 const amenityIcons = {
   "High-Speed Wifi": { icon: Wifi, label: "Wifi" },
   "Infinity Pool": { icon: Waves, label: "Pool" },
@@ -42,21 +41,28 @@ const HotelCard = ({ hotel }) => {
   const discountAmount = hotel.price?.discount || 0;
   const finalPrice = basePrice - discountAmount;
 
+  // --- LOCATION LOGIC ---
+  // City සහ Country දෙකම තියෙනවා නම් "City, Country" විදියට හදනවා.
+  // නැත්නම් Address එක හෝ Address එකත් නැත්නම් පරණ location field එක පෙන්නනවා.
+  const locationDisplay =
+    hotel.city && hotel.country
+      ? `${hotel.city}, ${hotel.country}`
+      : hotel.address || hotel.location || "Location Info Unavailable";
+
   return (
-    <Link to={`/hotels/${hotel._id}`} className="group block h-full">
-      <div className="bg-card rounded-2xl overflow-hidden border border-border/40 shadow-sm hover:shadow-2xl hover:border-primary/20 transition-all duration-300 h-full flex flex-col relative">
+    <Link to={`/hotels/${hotel._id}`} className="block h-full group">
+      <div className="relative flex flex-col h-full overflow-hidden transition-all duration-300 border shadow-sm bg-card rounded-2xl border-border/40 hover:shadow-2xl hover:border-primary/20">
         {/* --- Image Section --- */}
-        <div className="relative h-60 overflow-hidden">
+        <div className="relative overflow-hidden h-60">
           <img
             src={displayImage}
             alt={hotel.name}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
           />
-          {/* Overlay Gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
 
           {/* Top Badges */}
-          <div className="absolute top-3 left-3 flex gap-2">
+          <div className="absolute flex gap-2 top-3 left-3">
             {hotel.featured && (
               <span className="bg-white/90 backdrop-blur text-black text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wide">
                 Featured
@@ -70,14 +76,16 @@ const HotelCard = ({ hotel }) => {
           </div>
 
           {/* Bottom Info on Image */}
-          <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+          <div className="absolute flex items-end justify-between bottom-3 left-3 right-3">
             <div className="text-white">
-              <p className="text-xs font-medium opacity-90 flex items-center gap-1 mb-1">
-                <MapPin className="w-3 h-3" /> {hotel.location}
+              {/* --- UPDATED LOCATION DISPLAY --- */}
+              <p className="flex items-center gap-1 mb-1 text-xs font-medium opacity-90">
+                <MapPin className="w-3 h-3" /> {locationDisplay}
               </p>
+
               <div className="flex items-center gap-1">
                 <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                <span className="font-bold text-sm">{hotel.rating}</span>
+                <span className="text-sm font-bold">{hotel.rating}</span>
                 <span className="text-xs opacity-70">
                   ({hotel.reviews} Reviews)
                 </span>
@@ -87,17 +95,17 @@ const HotelCard = ({ hotel }) => {
         </div>
 
         {/* --- Content Section --- */}
-        <div className="p-5 flex flex-col flex-grow gap-4">
+        <div className="flex flex-col flex-grow gap-4 p-5">
           <div>
             <div className="text-[10px] font-bold text-primary tracking-wider uppercase mb-1">
               {hotel.type}
             </div>
-            <h3 className="text-lg font-bold text-card-foreground group-hover:text-primary transition-colors line-clamp-1">
+            <h3 className="text-lg font-bold transition-colors text-card-foreground group-hover:text-primary line-clamp-1">
               {hotel.name}
             </h3>
           </div>
 
-          {/* Amenities with Icons (Professional Look) */}
+          {/* Amenities */}
           <div className="flex flex-wrap gap-3">
             {hotel.amenities?.slice(0, 4).map((amenity, index) => {
               const IconData = amenityIcons[amenity];
@@ -115,14 +123,14 @@ const HotelCard = ({ hotel }) => {
               );
             })}
             {hotel.amenities?.length > 4 && (
-              <span className="text-xs text-muted-foreground self-center">
+              <span className="self-center text-xs text-muted-foreground">
                 +{hotel.amenities.length - 4} more
               </span>
             )}
           </div>
 
           {/* Pricing Footer */}
-          <div className="mt-auto pt-4 border-t border-border/50 flex items-end justify-between">
+          <div className="flex items-end justify-between pt-4 mt-auto border-t border-border/50">
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground">
                 Price per night
@@ -132,14 +140,14 @@ const HotelCard = ({ hotel }) => {
                   {currency} {convertPrice(finalPrice)}
                 </span>
                 {discountAmount > 0 && (
-                  <span className="text-xs text-muted-foreground line-through">
+                  <span className="text-xs line-through text-muted-foreground">
                     {convertPrice(basePrice)}
                   </span>
                 )}
               </div>
             </div>
 
-            <button className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300">
+            <button className="flex items-center justify-center transition-all duration-300 rounded-full h-9 w-9 bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white">
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useSearchParams } from "react-router-dom";
 import HotelCard from "@/components/HotelCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,42 +13,107 @@ import {
   ChevronRight,
   MapPin,
   RefreshCcw,
+  Check,
 } from "lucide-react";
 import { useCurrency } from "@/context/CurrencyContext";
 
+// Model එකේ තියෙන Amenities ලිස්ට් එක
+const amenityOptions = [
+  "High-Speed Wifi",
+  "Infinity Pool",
+  "Luxury Gym",
+  "Fine Dining",
+  "Spa & Wellness",
+  "Bar / Lounge",
+  "Free Parking",
+  "Air Conditioning",
+  "Private Beach",
+  "24/7 Concierge",
+];
+
 const FindHotels = () => {
-  const { currency } = useCurrency();
+  const { currency, exchangeRate } = useCurrency();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // --- States ---
+  const [destination, setDestination] = useState(
+    searchParams.get("search") || ""
+  );
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [destination, setDestination] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedType, setSelectedType] = useState("");
+  const [selectedAmenities, setSelectedAmenities] = useState([]); // NEW: Amenities State
   const [sortBy, setSortBy] = useState("newest");
 
-  // Pagination & View Mode
+  // Pagination & View
   const [viewMode, setViewMode] = useState("grid");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // --- Data Fetching ---
-  const fetchHotels = async () => {
+  // --- Fetch Logic (Optimized) ---
+  const fetchHotels = async (overrideParams = {}) => {
     setLoading(true);
     try {
+      const searchTerm = overrideParams.hasOwnProperty("search")
+        ? overrideParams.search
+        : destination;
+
+      const currentMin = overrideParams.hasOwnProperty("min")
+        ? overrideParams.min
+        : minPrice;
+
+      const currentMax = overrideParams.hasOwnProperty("max")
+        ? overrideParams.max
+        : maxPrice;
+
+      const currentType = overrideParams.hasOwnProperty("type")
+        ? overrideParams.type
+        : selectedType;
+
+      const currentAmenities = overrideParams.hasOwnProperty("amenities")
+        ? overrideParams.amenities
+        : selectedAmenities; // Amenities Array එක ගන්නවා
+
+      const currentSort = overrideParams.hasOwnProperty("sort")
+        ? overrideParams.sort
+        : sortBy;
+
+      const currentPage = overrideParams.hasOwnProperty("page")
+        ? overrideParams.page
+        : page;
+
+      // Currency Conversion
+      let minUSD = currentMin;
+      let maxUSD = currentMax;
+
+      if (currency !== "USD" && exchangeRate > 0) {
+        if (currentMin)
+          minUSD = (parseFloat(currentMin) / exchangeRate).toFixed(2);
+        if (currentMax)
+          maxUSD = (parseFloat(currentMax) / exchangeRate).toFixed(2);
+      }
+
+      // Prepare URL Params
       const params = new URLSearchParams({
-        city: destination,
-        sort: sortBy,
-        page: page,
-        limit: 6, // පිටුවකට හෝටල් 6යි
+        search: searchTerm,
+        sort: currentSort,
+        page: currentPage,
+        limit: 9,
       });
 
-      if (minPrice) params.append("min", minPrice);
-      if (maxPrice) params.append("max", maxPrice);
-      if (selectedType) params.append("type", selectedType);
+      if (minUSD) params.append("min", minUSD);
+      if (maxUSD) params.append("max", maxUSD);
+      if (currentType && currentType !== "All")
+        params.append("type", currentType);
+
+      // NEW: Amenities array එක comma separated string එකක් විදියට යවනවා
+      if (currentAmenities && currentAmenities.length > 0) {
+        params.append("amenities", currentAmenities.join(","));
+      }
 
       const res = await axios.get(`http://localhost:5000/api/hotels?${params}`);
 
@@ -55,139 +121,150 @@ const FindHotels = () => {
       setTotalPages(res.data.totalPages);
     } catch (err) {
       console.error("Error fetching hotels:", err);
+      setHotels([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // State වෙනස් වෙනකොට Data update කරන්න
+  // --- useEffects ---
+  useEffect(() => {
+    const query = searchParams.get("search");
+    fetchHotels({ search: query || "" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // NEW: selectedAmenities වෙනස් වුනාමත් auto fetch වෙනවා
   useEffect(() => {
     fetchHotels();
-  }, [page, sortBy, selectedType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, sortBy, selectedType, selectedAmenities]);
 
-  // Search Button එකට
+  // --- Handlers ---
   const handleSearch = () => {
     setPage(1);
-    fetchHotels();
+    setSearchParams({ search: destination });
+    fetchHotels({ search: destination, page: 1 });
   };
 
-  // Reset Filters
+  // NEW: Amenities Checkbox Handler
+  const handleAmenityChange = (amenity) => {
+    setSelectedAmenities((prev) => {
+      if (prev.includes(amenity)) {
+        return prev.filter((item) => item !== amenity); // Remove if exists
+      } else {
+        return [...prev, amenity]; // Add if not exists
+      }
+    });
+    // Note: useEffect will handle the fetch automatically
+  };
+
   const handleReset = () => {
     setDestination("");
     setMinPrice("");
     setMaxPrice("");
     setSelectedType("");
+    setSelectedAmenities([]); // Reset Amenities State
     setSortBy("newest");
     setPage(1);
-    fetchHotels();
+    setSearchParams({});
+
+    fetchHotels({
+      search: "",
+      min: "",
+      max: "",
+      type: "",
+      amenities: [], // Reset API params
+      sort: "newest",
+      page: 1,
+    });
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 dark:bg-background pb-10">
-      {/* --- 1. NEW HERO SECTION (Title with Background) --- */}
-      <div className="relative h-[450px] w-full flex items-center justify-center mb-10 overflow-hidden">
-        {/* Background Image */}
+    <div className="min-h-screen pb-10 bg-gray-50/50 dark:bg-background">
+      {/* Hero Section */}
+      <div className="relative h-[400px] w-full flex items-center justify-center mb-10 overflow-hidden">
         <img
           src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=2000"
           alt="Luxury Hotel"
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 hover:scale-105"
+          className="absolute inset-0 object-cover w-full h-full"
         />
-        {/* Dark Overlay for readability */}
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
-
-        {/* Centered Content */}
-        <div className="relative z-10 text-center px-4 space-y-4 max-w-4xl mx-auto mt-16">
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight drop-shadow-xl">
-            Find Your{" "}
-            <span className="text-primary bg-white/10 px-2 rounded-lg backdrop-blur-sm">
-              Perfect Stay
-            </span>
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="relative z-10 text-center">
+          <h1 className="text-4xl font-extrabold text-white md:text-6xl">
+            Find Your Perfect Stay
           </h1>
-          <p className="text-lg md:text-xl text-gray-200 max-w-2xl mx-auto drop-shadow-md font-medium">
-            Discover luxury hotels, cozy villas, and serene resorts at the best
-            prices around the world.
+          <p className="mt-4 text-xl text-gray-200">
+            Search by City, Country, Hotel Name, or Amenities
           </p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col lg:flex-row gap-8">
-        {/* --- 2. Filter Sidebar (Sticky) --- */}
-        <aside className="w-full lg:w-80 flex-shrink-0 space-y-6">
-          <div className="bg-card p-6 rounded-2xl border border-border/60 shadow-lg sticky top-24">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/50">
-              <h3 className="font-bold text-lg flex items-center gap-2">
+      <div className="flex flex-col gap-8 px-4 mx-auto max-w-7xl md:px-8 lg:flex-row">
+        {/* Sidebar Filters */}
+        <aside className="flex-shrink-0 w-full space-y-6 lg:w-80">
+          <div className="sticky p-6 border shadow-lg bg-card rounded-2xl border-border/60 top-24">
+            <div className="flex items-center justify-between pb-4 mb-6 border-b">
+              <h3 className="flex items-center gap-2 text-lg font-bold">
                 <SlidersHorizontal className="w-5 h-5 text-primary" /> Filters
               </h3>
               <button
                 onClick={handleReset}
-                className="text-xs text-muted-foreground flex items-center gap-1 hover:text-red-500 transition-colors"
+                className="flex items-center gap-1 text-xs text-red-500 hover:underline"
               >
                 <RefreshCcw className="w-3 h-3" /> Reset
               </button>
             </div>
 
-            {/* Location Search */}
-            <div className="space-y-3 mb-6">
-              <label className="text-sm font-semibold text-foreground/80">
-                Location
-              </label>
-              <div className="relative group">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 group-hover:text-primary transition-colors" />
+            {/* Keyword Search */}
+            <div className="mb-6 space-y-3">
+              <label className="text-sm font-semibold">Search Anything</label>
+              <div className="relative">
+                <MapPin className="absolute w-4 h-4 -translate-y-1/2 left-3 top-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="City or Area..."
-                  className="pl-9 bg-background/50 focus:bg-background transition-all"
+                  placeholder="e.g. Sri Lanka, Pool, Villa..."
+                  className="pl-9"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 />
               </div>
             </div>
 
-            {/* Price Filter */}
-            <div className="space-y-3 mb-6">
-              <label className="text-sm font-semibold text-foreground/80">
-                Price Range{" "}
-                <span className="text-xs text-primary font-normal">
-                  ({currency})
-                </span>
+            {/* Price Range */}
+            <div className="mb-6 space-y-3">
+              <label className="text-sm font-semibold">
+                Price ({currency})
               </label>
-              <div className="flex items-center gap-2">
-                <div className="relative w-full">
-                  <Input
-                    type="number"
-                    placeholder="Min"
-                    className="pl-3 bg-background/50"
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
-                  />
-                </div>
-                <span className="text-muted-foreground">-</span>
-                <div className="relative w-full">
-                  <Input
-                    type="number"
-                    placeholder="Max"
-                    className="pl-3 bg-background/50"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
-                  />
-                </div>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  placeholder="Min"
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value)}
+                />
+                <Input
+                  type="number"
+                  placeholder="Max"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                />
               </div>
             </div>
 
             {/* Property Type */}
-            <div className="space-y-3 mb-6">
-              <label className="text-sm font-semibold text-foreground/80">
-                Property Type
-              </label>
+            <div className="mb-6 space-y-3">
+              <label className="text-sm font-semibold">Property Type</label>
               <div className="flex flex-wrap gap-2">
                 {["All", "Hotel", "Villa", "Resort", "Chalet"].map((type) => (
                   <button
                     key={type}
                     onClick={() => setSelectedType(type === "All" ? "" : type)}
-                    className={`text-xs px-4 py-2 rounded-lg border transition-all duration-200 ${
+                    className={`text-xs px-3 py-1.5 rounded-full border ${
                       (type === "All" && selectedType === "") ||
                       selectedType === type
-                        ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/20"
-                        : "bg-background border-border hover:border-primary/50 hover:bg-secondary/50"
+                        ? "bg-primary text-white border-primary"
+                        : "bg-background border-gray-300 hover:bg-gray-100"
                     }`}
                   >
                     {type}
@@ -196,61 +273,85 @@ const FindHotels = () => {
               </div>
             </div>
 
-            <Button
-              size="lg"
-              className="w-full font-bold shadow-lg shadow-primary/25"
-              onClick={handleSearch}
-            >
+            {/* NEW: Amenities Filter Section */}
+            <div className="mb-6 space-y-3">
+              <label className="text-sm font-semibold">Amenities</label>
+              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                {amenityOptions.map((amenity) => (
+                  <label
+                    key={amenity}
+                    className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer dark:text-gray-300 hover:text-primary"
+                  >
+                    <div
+                      className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                        selectedAmenities.includes(amenity)
+                          ? "bg-primary border-primary"
+                          : "border-gray-300 bg-background"
+                      }`}
+                    >
+                      {selectedAmenities.includes(amenity) && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                    {/* Hidden Native Checkbox for accessibility */}
+                    <input
+                      type="checkbox"
+                      className="hidden"
+                      checked={selectedAmenities.includes(amenity)}
+                      onChange={() => handleAmenityChange(amenity)}
+                    />
+                    {amenity}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <Button className="w-full font-bold" onClick={handleSearch}>
               Apply Filters
             </Button>
           </div>
         </aside>
 
-        {/* --- 3. Main Results Area --- */}
+        {/* Results Area */}
         <div className="flex-grow">
-          {/* Top Control Bar */}
-          <div className="bg-card p-4 rounded-xl border border-border/50 shadow-sm flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-            {/* Search Input */}
-            <div className="relative w-full sm:max-w-md group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 group-hover:text-primary transition-colors" />
+          {/* Top Bar (Sort & View) */}
+          <div className="flex flex-col items-center justify-between gap-4 p-4 mb-6 border shadow-sm bg-card rounded-xl sm:flex-row">
+            <div className="relative w-full sm:max-w-md">
+              <Search className="absolute w-4 h-4 -translate-y-1/2 left-3 top-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search hotels by name..."
-                className="pl-9 h-10 bg-background border-transparent hover:border-border focus:border-primary transition-all shadow-sm"
+                placeholder="Search hotels, cities, amenities..."
+                className="pl-9"
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
             </div>
 
-            {/* Sort & View Toggle */}
-            <div className="flex gap-3 items-center w-full sm:w-auto justify-end">
+            <div className="flex items-center gap-3">
               <select
-                className="h-10 px-3 rounded-md border border-border bg-background text-sm focus:ring-1 focus:ring-primary outline-none cursor-pointer hover:border-primary/50 transition-colors"
+                className="h-10 px-3 text-sm border rounded-md bg-background focus:ring-primary"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
                 <option value="newest">Newest Added</option>
                 <option value="price_asc">Price: Low to High</option>
                 <option value="price_desc">Price: High to Low</option>
-                <option value="rating">Highest Rated</option>
+                <option value="rating">Top Rated</option>
               </select>
 
-              <div className="flex border border-border rounded-md overflow-hidden bg-background">
+              <div className="flex border rounded-md">
                 <button
                   onClick={() => setViewMode("grid")}
-                  className={`p-2.5 transition-colors ${
-                    viewMode === "grid"
-                      ? "bg-primary/10 text-primary"
-                      : "hover:bg-muted"
+                  className={`p-2 ${
+                    viewMode === "grid" ? "bg-primary/10 text-primary" : ""
                   }`}
                 >
                   <LayoutGrid className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setViewMode("list")}
-                  className={`p-2.5 transition-colors ${
-                    viewMode === "list"
-                      ? "bg-primary/10 text-primary"
-                      : "hover:bg-muted"
+                  className={`p-2 ${
+                    viewMode === "list" ? "bg-primary/10 text-primary" : ""
                   }`}
                 >
                   <ListIcon className="w-4 h-4" />
@@ -259,81 +360,62 @@ const FindHotels = () => {
             </div>
           </div>
 
-          {/* Hotels Grid / List */}
+          {/* Hotel List */}
           {loading ? (
-            // Loading Skeleton
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div
-                  key={i}
-                  className="h-[350px] bg-muted/60 rounded-2xl border border-border/50"
-                ></div>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 animate-pulse">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-[350px] bg-gray-200 rounded-xl"></div>
               ))}
             </div>
           ) : hotels.length === 0 ? (
-            // Empty State
-            <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border border-dashed border-border/60">
-              <div className="bg-muted p-4 rounded-full mb-4">
-                <Search className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground">
+            <div className="py-20 text-center border-2 border-dashed rounded-xl">
+              <h3 className="text-xl font-bold text-gray-500">
                 No hotels found
               </h3>
-              <p className="text-sm text-muted-foreground mt-2 text-center max-w-xs">
-                We couldn't find any properties matching your search. Try
-                changing your filters.
+              <p className="mt-2 text-sm text-gray-400">
+                Try removing some amenities or filters.
               </p>
-              <Button
-                variant="link"
-                onClick={handleReset}
-                className="mt-4 text-primary"
-              >
-                Clear all filters
+              <Button variant="link" onClick={handleReset} className="mt-2">
+                Clear Filters
               </Button>
             </div>
           ) : (
-            // Results Grid
-            <div
-              className={`grid gap-6 ${
-                viewMode === "grid"
-                  ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
-                  : "grid-cols-1"
-              }`}
-            >
-              {hotels.map((hotel) => (
-                <HotelCard key={hotel._id} hotel={hotel} />
-              ))}
-            </div>
-          )}
-
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="mt-12 flex justify-center gap-2 items-center">
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={page === 1}
-                onClick={() => setPage((prev) => prev - 1)}
-                className="hover:border-primary hover:text-primary transition-colors"
+            <>
+              <div
+                className={`grid gap-6 ${
+                  viewMode === "grid"
+                    ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+                    : "grid-cols-1"
+                }`}
               >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
+                {hotels.map((hotel) => (
+                  <HotelCard key={hotel._id} hotel={hotel} />
+                ))}
+              </div>
 
-              <span className="text-sm font-semibold px-6 bg-card py-2.5 rounded-lg border border-border shadow-sm">
-                Page <span className="text-primary">{page}</span> of{" "}
-                {totalPages}
-              </span>
-
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={page === totalPages}
-                onClick={() => setPage((prev) => prev + 1)}
-                className="hover:border-primary hover:text-primary transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center gap-4 mt-8">
+                  <Button
+                    variant="outline"
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => p - 1)}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="py-2 font-semibold">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    disabled={page === totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

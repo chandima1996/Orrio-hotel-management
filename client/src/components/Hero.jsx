@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addDays } from "date-fns";
+import { useNavigate } from "react-router-dom"; // 1. Added useNavigate
 import {
   Calendar as CalendarIcon,
   Users,
-  Search,
+  Search, // Note: Not used as icon component in your code below (Sparkles used), but kept import
   Sparkles,
-  MapPin,
   Minus,
   Plus,
 } from "lucide-react";
@@ -22,17 +22,19 @@ import {
 import { cn } from "@/lib/utils";
 
 const heroImages = [
-  "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=2070&auto=format&fit=crop", // Luxury Pool
-  "https://images.unsplash.com/photo-1571896349842-6e53ce41e887?q=80&w=2070&auto=format&fit=crop", // Bedroom
-  "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=2070&auto=format&fit=crop", // Resort View
-  "https://images.unsplash.com/photo-1618773928121-c32242e63f39?q=80&w=2070&auto=format&fit=crop", // Modern Interior
+  "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=2070&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1571896349842-6e53ce41e887?q=80&w=2070&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=2070&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1618773928121-c32242e63f39?q=80&w=2070&auto=format&fit=crop",
 ];
 
 const Hero = () => {
-  // 1. Background Slider State
   const [currentImage, setCurrentImage] = useState(0);
 
-  // 2. Search States
+  // 2. Navigation Hook
+  const navigate = useNavigate();
+
+  // Search States
   const [date, setDate] = useState({
     from: new Date(),
     to: addDays(new Date(), 1),
@@ -41,7 +43,7 @@ const Hero = () => {
   const [guests, setGuests] = useState({ adults: 1, children: 0 });
   const [location, setLocation] = useState("");
 
-  // Auto Change Background (Every 5 Seconds)
+  // Auto Change Background
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentImage((prev) => (prev + 1) % heroImages.length);
@@ -49,7 +51,6 @@ const Hero = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Guest Handler
   const updateGuests = (type, operation) => {
     setGuests((prev) => ({
       ...prev,
@@ -58,9 +59,22 @@ const Hero = () => {
     }));
   };
 
+  // 3. Handle Search Function (New Logic)
+  const handleSearch = () => {
+    // Navigate to find-hotels page with the search query
+    // Even if location is empty, we can go to the page to show all hotels
+    navigate(`/find-hotels?search=${encodeURIComponent(location)}`);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+
   return (
-    <div className="relative h-screen w-full overflow-hidden flex items-center justify-center">
-      {/* --- 1. Animated Background Slider --- */}
+    <div className="relative flex items-center justify-center w-full h-screen overflow-hidden">
+      {/* --- Animated Background Slider --- */}
       <AnimatePresence mode="wait">
         <motion.div
           key={currentImage}
@@ -70,58 +84,57 @@ const Hero = () => {
           transition={{ duration: 1.5 }}
           className="absolute inset-0 z-0"
         >
-          <div className="absolute inset-0 bg-black/40 z-10" />{" "}
-          {/* Dark Overlay */}
+          <div className="absolute inset-0 z-10 bg-black/40" />
           <img
             src={heroImages[currentImage]}
             alt="Hero"
-            className="w-full h-full object-cover"
+            className="object-cover w-full h-full"
           />
         </motion.div>
       </AnimatePresence>
 
-      {/* --- 2. Content Section --- */}
-      <div className="relative z-20 container mx-auto px-4 flex flex-col items-center gap-8 text-center pt-20">
-        {/* Headline */}
+      {/* --- Content Section --- */}
+      <div className="container relative z-20 flex flex-col items-center gap-8 px-4 pt-20 mx-auto text-center">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-4 tracking-tight drop-shadow-lg">
+          <h1 className="mb-4 text-4xl font-extrabold tracking-tight text-white md:text-6xl lg:text-7xl drop-shadow-lg">
             Experience the{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-primary">
               Extraordinary
             </span>
           </h1>
-          <p className="text-lg md:text-xl text-gray-200 max-w-2xl mx-auto font-light">
+          <p className="max-w-2xl mx-auto text-lg font-light text-gray-200 md:text-xl">
             Discover futuristic stays with AI-powered personalized
             recommendations. Your dream vacation starts here.
           </p>
         </motion.div>
 
-        {/* --- 3. The Crystal Search Bar --- */}
+        {/* --- The Crystal Search Bar --- */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="w-full max-w-5xl bg-white/10 dark:bg-black/40 backdrop-blur-xl border border-white/20 p-4 rounded-3xl shadow-2xl flex flex-col md:flex-row items-center gap-4"
+          className="flex flex-col items-center w-full max-w-5xl gap-4 p-4 border shadow-2xl bg-white/10 dark:bg-black/40 backdrop-blur-xl border-white/20 rounded-3xl md:flex-row"
         >
           {/* A. Location / AI Input */}
-          <div className="flex-1 w-full relative group">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-primary transition-colors">
+          <div className="relative flex-1 w-full group">
+            <div className="absolute text-gray-300 transition-colors -translate-y-1/2 left-4 top-1/2 group-focus-within:text-primary">
               <Sparkles className="w-5 h-5" />
             </div>
             <input
               type="text"
               placeholder="Where to? Or describe your vibe (e.g. 'Peaceful beach')..."
-              className="w-full h-14 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+              className="w-full pl-12 pr-4 text-white transition-all border h-14 bg-white/5 border-white/10 rounded-2xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
+              onKeyDown={handleKeyPress} // 4. Added Enter Key Support
             />
           </div>
 
-          {/* B. Date Range Picker (Calendar) */}
+          {/* B. Date Range Picker */}
           <div className="w-full md:w-auto">
             <Popover>
               <PopoverTrigger asChild>
@@ -132,7 +145,7 @@ const Hero = () => {
                     !date && "text-muted-foreground"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4 text-blue-300" />
+                  <CalendarIcon className="w-4 h-4 mr-2 text-blue-300" />
                   {date?.from ? (
                     date.to ? (
                       <>
@@ -168,16 +181,15 @@ const Hero = () => {
                   variant="outline"
                   className="w-full md:w-[200px] h-14 justify-start bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
                 >
-                  <Users className="mr-2 h-4 w-4 text-blue-300" />
+                  <Users className="w-4 h-4 mr-2 text-blue-300" />
                   {guests.adults} Adults, {guests.children} Children
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-4">
+              <PopoverContent className="p-4 w-80">
                 <div className="space-y-4">
                   <h4 className="font-medium leading-none text-muted-foreground">
                     Guests
                   </h4>
-
                   {/* Adults */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Adults</span>
@@ -185,24 +197,23 @@ const Hero = () => {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8"
+                        className="w-8 h-8"
                         onClick={() => updateGuests("adults", "dec")}
                         disabled={guests.adults <= 1}
                       >
-                        <Minus className="h-4 w-4" />
+                        <Minus className="w-4 h-4" />
                       </Button>
                       <span className="w-4 text-center">{guests.adults}</span>
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8"
+                        className="w-8 h-8"
                         onClick={() => updateGuests("adults", "inc")}
                       >
-                        <Plus className="h-4 w-4" />
+                        <Plus className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
-
                   {/* Children */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Children</span>
@@ -210,20 +221,20 @@ const Hero = () => {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8"
+                        className="w-8 h-8"
                         onClick={() => updateGuests("children", "dec")}
                         disabled={guests.children <= 0}
                       >
-                        <Minus className="h-4 w-4" />
+                        <Minus className="w-4 h-4" />
                       </Button>
                       <span className="w-4 text-center">{guests.children}</span>
                       <Button
                         variant="outline"
                         size="icon"
-                        className="h-8 w-8"
+                        className="w-8 h-8"
                         onClick={() => updateGuests("children", "inc")}
                       >
-                        <Plus className="h-4 w-4" />
+                        <Plus className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
@@ -233,7 +244,10 @@ const Hero = () => {
           </div>
 
           {/* D. Search Button */}
-          <Button className="w-full md:w-auto h-14 px-8 rounded-2xl bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary transition-all shadow-lg hover:shadow-primary/50 text-lg font-semibold">
+          <Button
+            onClick={handleSearch} // 5. Added onClick handler
+            className="w-full px-8 text-lg font-semibold transition-all shadow-lg md:w-auto h-14 rounded-2xl bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary hover:shadow-primary/50"
+          >
             Search
           </Button>
         </motion.div>
