@@ -41,9 +41,6 @@ const HotelCard = ({ hotel }) => {
   const discountAmount = hotel.price?.discount || 0;
   const finalPrice = basePrice - discountAmount;
 
-  // --- LOCATION LOGIC ---
-  // City සහ Country දෙකම තියෙනවා නම් "City, Country" විදියට හදනවා.
-  // නැත්නම් Address එක හෝ Address එකත් නැත්නම් පරණ location field එක පෙන්නනවා.
   const locationDisplay =
     hotel.city && hotel.country
       ? `${hotel.city}, ${hotel.country}`
@@ -78,7 +75,6 @@ const HotelCard = ({ hotel }) => {
           {/* Bottom Info on Image */}
           <div className="absolute flex items-end justify-between bottom-3 left-3 right-3">
             <div className="text-white">
-              {/* --- UPDATED LOCATION DISPLAY --- */}
               <p className="flex items-center gap-1 mb-1 text-xs font-medium opacity-90">
                 <MapPin className="w-3 h-3" /> {locationDisplay}
               </p>
@@ -132,8 +128,9 @@ const HotelCard = ({ hotel }) => {
           {/* Pricing Footer */}
           <div className="flex items-end justify-between pt-4 mt-auto border-t border-border/50">
             <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground">
-                Price per night
+              {/* UPDATED: Added "Starting from" here */}
+              <span className="text-xs text-muted-foreground mb-0.5">
+                Starting from
               </span>
               <div className="flex items-baseline gap-2">
                 <span className="text-xl font-bold text-foreground">
@@ -144,6 +141,9 @@ const HotelCard = ({ hotel }) => {
                     {convertPrice(basePrice)}
                   </span>
                 )}
+                <span className="text-xs font-normal text-muted-foreground">
+                  /night
+                </span>
               </div>
             </div>
 
