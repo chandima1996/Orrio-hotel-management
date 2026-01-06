@@ -4,12 +4,16 @@ const roomSchema = new mongoose.Schema(
   {
     hotelId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Hotel", // Room eka aithi Hotel eka
+      ref: "Hotel",
       required: true,
     },
     name: {
       type: String,
-      required: true, // Example: "Ocean View Suite"
+      required: true,
+    },
+    description: {
+      type: String,
+      required: true,
     },
     price: {
       normal: {
@@ -21,27 +25,23 @@ const roomSchema = new mongoose.Schema(
         default: 0,
       },
     },
-    description: {
-      type: String,
-      required: true,
-    },
-    // --- Capacity & Size ---
     capacity: {
-      type: Number, // Maximum people (Frontend: capacity)
+      type: Number,
       required: true,
     },
     size: {
-      type: Number, // Square feet/meters (Frontend: size)
+      type: Number,
     },
-    // --- Room Images ---
     images: {
       type: [String],
     },
     // --- Room Amenities ---
     amenities: {
       type: [String],
+      // මෙන්න මෙතනට අපි "Queen Bed" එකතු කරා
       enum: [
         "King Bed",
+        "Queen Bed", // <--- NEW ADDITION
         "2 Queen Beds",
         "Ocean Balcony",
         "Minibar",
@@ -54,8 +54,6 @@ const roomSchema = new mongoose.Schema(
         "AC",
       ],
     },
-    // --- Availability Handling ---
-    // Room numbers saha ewa book wela thiyena dates track karanna
     roomNumbers: [
       {
         number: Number,

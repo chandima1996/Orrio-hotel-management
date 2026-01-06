@@ -19,6 +19,7 @@ import Legal from "./pages/Legal";
 import SingleHotel from "./pages/SingleHotel";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
+import SingleRoom from "./components/SingleRoom";
 
 const Home = () => (
   <>
@@ -69,6 +70,7 @@ function App() {
             <Route path="/hotels/:id" element={<SingleHotel />} />
             <Route path="/sign-in/*" element={<SignInPage />} />
             <Route path="/sign-up/*" element={<SignUpPage />} />
+            <Route path="/room/:id" element={<SingleRoom />} />
           </Routes>
         </div>
         <Footer />

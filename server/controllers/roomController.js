@@ -69,6 +69,20 @@ export const getRoom = async (req, res, next) => {
 };
 
 // 5. Get All Rooms
+// අලුතින් එකතු කල function එක:
+// Get All Rooms for a Specific Hotel
+export const getRoomsByHotel = async (req, res, next) => {
+  const hotelId = req.params.hotelid;
+  try {
+    // Hotel ID එක match වෙන rooms පමණක් සොයන්න
+    const rooms = await Room.find({ hotelId: hotelId });
+    res.status(200).json(rooms);
+  } catch (err) {
+    res.status(500).json(err);
+  }
+};
+
+// ... (getRooms - මෙය සියලුම කාමර ගන්න function එක) ...
 export const getRooms = async (req, res, next) => {
   try {
     const rooms = await Room.find();
