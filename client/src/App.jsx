@@ -1,7 +1,7 @@
-import { useEffect } from "react"; // 1. useEffect import කරන්න
+import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
-import { useUser } from "@clerk/clerk-react"; // 2. useUser hook එක ගන්න
-import axios from "axios"; // 3. axios ගන්න
+import { useUser } from "@clerk/clerk-react";
+import axios from "axios";
 
 // Components
 import Navbar from "./components/Navbar";
@@ -10,6 +10,8 @@ import Featured from "./components/Featured";
 import Stats from "./components/Stats";
 import Footer from "./components/Footer";
 import { ThemeProvider } from "./components/theme-provider";
+// --- 1. Toaster Component එක import කරන්න ---
+import { Toaster } from "@/components/ui/sonner";
 
 // Pages
 import FindHotels from "./pages/FindHotels";
@@ -20,6 +22,7 @@ import SingleHotel from "./pages/SingleHotel";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
 import SingleRoom from "./components/SingleRoom";
+import MyDashboard from "./pages/MyDashboard";
 
 const Home = () => (
   <>
@@ -30,10 +33,8 @@ const Home = () => (
 );
 
 function App() {
-  // 4. Clerk එකෙන් User විස්තර ගන්න
   const { user, isSignedIn } = useUser();
 
-  // 5. User Log වුනාම Backend එකට Data යවන්න
   useEffect(() => {
     const syncUser = async () => {
       if (isSignedIn && user) {
@@ -53,7 +54,7 @@ function App() {
     };
 
     syncUser();
-  }, [isSignedIn, user]); // User කෙනෙක් sign in වුන ගමන් මේක වැඩ කරනවා
+  }, [isSignedIn, user]);
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
@@ -67,14 +68,17 @@ function App() {
             <Route path="/contact" element={<Contact />} />
             <Route path="/about" element={<About />} />
             <Route path="/privacy" element={<Legal />} />
-            <Route path="/hotels/:id" element={<SingleHotel />} />
             <Route path="/sign-in/*" element={<SignInPage />} />
             <Route path="/sign-up/*" element={<SignUpPage />} />
             <Route path="/room/:id" element={<SingleRoom />} />
+            <Route path="/dashboard" element={<MyDashboard />} />
           </Routes>
         </div>
         <Footer />
       </main>
+
+      {/* --- 2. Toaster එක මෙතනට දාන්න (Footer එකට පස්සේ තිබුනාට කමක් නෑ) --- */}
+      <Toaster />
     </ThemeProvider>
   );
 }

@@ -1,9 +1,14 @@
 import express from "express";
-import { saveUser } from "../controllers/userController.js";
+import {
+  saveUser,
+  getUserProfile,
+  updateUserProfile,
+} from "../controllers/userController.js";
 
 const router = express.Router();
 
-// Frontend එකෙන් මේ URL එකට POST request එකක් එව්වාම saveUser function එක වැඩ කරනවා
-router.post("/save-user", saveUser);
+router.post("/save-user", saveUser); // Login වෙනකොට
+router.get("/:clerkId", getUserProfile); // Dashboard එක load වෙනකොට
+router.put("/update-profile", updateUserProfile); // Dashboard එකේ Save බටන් එක ඔබනකොට
 
 export default router;

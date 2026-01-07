@@ -1,24 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { format, addDays } from "date-fns";
-import { useNavigate } from "react-router-dom"; // 1. Added useNavigate
-import {
-  Calendar as CalendarIcon,
-  Users,
-  Search, // Note: Not used as icon component in your code below (Sparkles used), but kept import
-  Sparkles,
-  Minus,
-  Plus,
-} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Sparkles, Search, X } from "lucide-react"; // 1. Imported 'X' icon
+import { Toaster, toast } from "sonner";
 
 // Shadcn & UI Components
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 const heroImages = [
@@ -30,17 +17,7 @@ const heroImages = [
 
 const Hero = () => {
   const [currentImage, setCurrentImage] = useState(0);
-
-  // 2. Navigation Hook
   const navigate = useNavigate();
-
-  // Search States
-  const [date, setDate] = useState({
-    from: new Date(),
-    to: addDays(new Date(), 1),
-  });
-
-  const [guests, setGuests] = useState({ adults: 1, children: 0 });
   const [location, setLocation] = useState("");
 
   // Auto Change Background
@@ -51,29 +28,29 @@ const Hero = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const updateGuests = (type, operation) => {
-    setGuests((prev) => ({
-      ...prev,
-      [type]:
-        operation === "inc" ? prev[type] + 1 : Math.max(0, prev[type] - 1),
-    }));
-  };
-
-  // 3. Handle Search Function (New Logic)
   const handleSearch = () => {
-    // Navigate to find-hotels page with the search query
-    // Even if location is empty, we can go to the page to show all hotels
+    if (!location.trim()) {
+      return;
+    }
     navigate(`/find-hotels?search=${encodeURIComponent(location)}`);
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && location.trim()) {
+      // Only allow enter if text exists
       handleSearch();
     }
   };
 
+  // 2. Clear Handler
+  const handleClear = () => {
+    setLocation("");
+  };
+
   return (
     <div className="relative flex items-center justify-center w-full h-screen overflow-hidden">
+      <Toaster />
+
       {/* --- Animated Background Slider --- */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -112,143 +89,53 @@ const Hero = () => {
           </p>
         </motion.div>
 
-        {/* --- The Crystal Search Bar --- */}
+        {/* --- Search Bar --- */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="flex flex-col items-center w-full max-w-5xl gap-4 p-4 border shadow-2xl bg-white/10 dark:bg-black/40 backdrop-blur-xl border-white/20 rounded-3xl md:flex-row"
+          className="flex flex-col items-center w-full max-w-3xl gap-2 p-2 border shadow-2xl bg-white/10 dark:bg-black/40 backdrop-blur-xl border-white/20 rounded-3xl md:flex-row md:p-3"
         >
           {/* A. Location / AI Input */}
           <div className="relative flex-1 w-full group">
+            {/* Left Icon */}
             <div className="absolute text-gray-300 transition-colors -translate-y-1/2 left-4 top-1/2 group-focus-within:text-primary">
               <Sparkles className="w-5 h-5" />
             </div>
+
             <input
               type="text"
-              placeholder="Where to? Or describe your vibe (e.g. 'Peaceful beach')..."
-              className="w-full pl-12 pr-4 text-white transition-all border h-14 bg-white/5 border-white/10 rounded-2xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Where to? (e.g. 'Sigiriya' or 'Beach Vibe')"
+              // Added pr-12 to make space for the clear button
+              className="w-full pl-12 pr-12 text-white transition-all border h-14 bg-white/5 border-white/10 rounded-2xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              onKeyDown={handleKeyPress} // 4. Added Enter Key Support
+              onKeyDown={handleKeyPress}
             />
-          </div>
 
-          {/* B. Date Range Picker */}
-          <div className="w-full md:w-auto">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full md:w-[280px] h-14 justify-start text-left font-normal bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2 text-blue-300" />
-                  {date?.from ? (
-                    date.to ? (
-                      <>
-                        {format(date.from, "LLL dd")} -{" "}
-                        {format(date.to, "LLL dd")}
-                      </>
-                    ) : (
-                      format(date.from, "LLL dd, y")
-                    )
-                  ) : (
-                    <span>Check-in / Check-out</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={date?.from}
-                  selected={date}
-                  onSelect={setDate}
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* C. Guest Selector */}
-          <div className="w-full md:w-auto">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full md:w-[200px] h-14 justify-start bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
-                >
-                  <Users className="w-4 h-4 mr-2 text-blue-300" />
-                  {guests.adults} Adults, {guests.children} Children
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="p-4 w-80">
-                <div className="space-y-4">
-                  <h4 className="font-medium leading-none text-muted-foreground">
-                    Guests
-                  </h4>
-                  {/* Adults */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Adults</span>
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="w-8 h-8"
-                        onClick={() => updateGuests("adults", "dec")}
-                        disabled={guests.adults <= 1}
-                      >
-                        <Minus className="w-4 h-4" />
-                      </Button>
-                      <span className="w-4 text-center">{guests.adults}</span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="w-8 h-8"
-                        onClick={() => updateGuests("adults", "inc")}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  {/* Children */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Children</span>
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="w-8 h-8"
-                        onClick={() => updateGuests("children", "dec")}
-                        disabled={guests.children <= 0}
-                      >
-                        <Minus className="w-4 h-4" />
-                      </Button>
-                      <span className="w-4 text-center">{guests.children}</span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="w-8 h-8"
-                        onClick={() => updateGuests("children", "inc")}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+            {/* 3. Clear Button (Visible only when location has text) */}
+            {location && (
+              <button
+                onClick={handleClear}
+                className="absolute p-1 text-gray-400 transition-colors -translate-y-1/2 rounded-full right-4 top-1/2 hover:text-white hover:bg-white/20"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* D. Search Button */}
           <Button
-            onClick={handleSearch} // 5. Added onClick handler
-            className="w-full px-8 text-lg font-semibold transition-all shadow-lg md:w-auto h-14 rounded-2xl bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary hover:shadow-primary/50"
+            onClick={handleSearch}
+            disabled={!location.trim()} // 4. Disable button if empty
+            className={cn(
+              "w-full px-8 text-lg font-semibold transition-all shadow-lg md:w-auto h-14 rounded-2xl",
+              "bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary hover:shadow-primary/50",
+              // Gray out style when disabled
+              !location.trim() && "opacity-50 cursor-not-allowed grayscale"
+            )}
           >
-            Search
+            <Search className="w-5 h-5 mr-2" /> Search
           </Button>
         </motion.div>
       </div>
