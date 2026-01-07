@@ -4,20 +4,11 @@ import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, differenceInCalendarDays } from "date-fns";
 import { useCurrency } from "@/context/CurrencyContext";
-import { loadStripe } from "@stripe/stripe-js";
-import {
-  Elements,
-  CardElement,
-  useStripe,
-  useElements,
-} from "@stripe/react-stripe-js";
-import { Toaster, toast } from "sonner"; // IMPORT TOASTER & TOAST
+import { Toaster, toast } from "sonner";
 
 // UI Components
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -27,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 // Custom Components
 import RoomCard from "@/components/RoomCard";
+import BookingWizard from "@/components/BookingWizard"; // IMPORT WIZARD
 
 // Icons
 import {
@@ -41,81 +33,9 @@ import {
   X,
   BedDouble,
   RotateCcw,
-  CreditCard,
-  Wallet,
-  Pencil,
   Share2,
   Heart,
 } from "lucide-react";
-
-// --- STRIPE SETUP ---
-const stripePromise = loadStripe("pk_test_TYooMQauvdEDq54NiTphI7jx");
-
-// --- STRIPE FORM COMPONENT ---
-const StripePaymentForm = ({ amount, currency, onSuccess }) => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [error, setError] = useState(null);
-  const [processing, setProcessing] = useState(false);
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (!stripe || !elements) return;
-
-    setProcessing(true);
-    setError(null);
-
-    const cardElement = elements.getElement(CardElement);
-
-    const { error, paymentMethod } = await stripe.createPaymentMethod({
-      type: "card",
-      card: cardElement,
-    });
-
-    if (error) {
-      setError(error.message);
-      setProcessing(false);
-    } else {
-      setTimeout(() => {
-        setProcessing(false);
-        onSuccess(paymentMethod);
-      }, 1500);
-    }
-  };
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="p-4 mt-4 bg-white border rounded-lg"
-    >
-      <h4 className="mb-4 text-sm font-semibold text-gray-700 uppercase">
-        Enter Card Details
-      </h4>
-      <div className="p-3 mb-4 border rounded-md bg-gray-50">
-        <CardElement
-          options={{
-            style: {
-              base: {
-                fontSize: "16px",
-                color: "#000000",
-                "::placeholder": { color: "#aab7c4" },
-              },
-              invalid: { color: "#9e2146" },
-            },
-          }}
-        />
-      </div>
-      {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
-      <Button
-        type="submit"
-        disabled={!stripe || processing}
-        className="w-full bg-indigo-600 hover:bg-indigo-700"
-      >
-        {processing ? "Processing..." : `Pay ${currency} ${amount}`}
-      </Button>
-    </form>
-  );
-};
 
 const SingleHotel = () => {
   const { id } = useParams();
@@ -167,7 +87,7 @@ const SingleHotel = () => {
   const totalGuests = guests.adults + guests.children;
   const isDateSelected = date?.from && date?.to;
 
-  // --- Handlers for Share & Favorite (UPDATED WITH TOAST) ---
+  // --- Handlers ---
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
     toast.success("Link copied to clipboard!", {
@@ -288,7 +208,7 @@ const SingleHotel = () => {
         const roomTotal = nightlyPrice * qty * nights;
         subTotal += roomTotal;
         items.push({
-          name: room.title, // Room Type (Title)
+          name: room.title,
           qty,
           nightlyPrice,
           total: roomTotal,
@@ -314,6 +234,7 @@ const SingleHotel = () => {
   const handleSaveGuestDetails = () => {
     if (validateGuestDetails()) {
       setIsGuestDetailsSaved(true);
+      setWizardStep(2); // <--- MENNA ME LINE EKA ADD KARANNA
     } else {
       toast.error("Missing Information", {
         description: "Please fill in all guest details to continue.",
@@ -371,11 +292,9 @@ const SingleHotel = () => {
 
   return (
     <div className="relative min-h-screen pt-24 pb-10 bg-background">
-      {/* Toast Provider */}
       <Toaster />
 
       <div className="px-4 mx-auto max-w-7xl md:px-8">
-        {/* Navigation Back */}
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 mb-6 text-muted-foreground hover:text-primary"
@@ -383,7 +302,7 @@ const SingleHotel = () => {
           <ArrowLeft className="w-5 h-5" /> Back
         </button>
 
-        {/* --- HEADER SECTION WITH SHARE & FAVORITE --- */}
+        {/* --- HEADER SECTION --- */}
         <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="mb-2 text-3xl font-extrabold md:text-4xl">
@@ -393,7 +312,6 @@ const SingleHotel = () => {
               <MapPin className="w-4 h-4" /> {hotel.address}, {hotel.location}
             </div>
           </div>
-          {/* Share and Favorite Buttons */}
           <div className="flex gap-2">
             <Button variant="outline" size="icon" onClick={handleShare}>
               <Share2 className="w-5 h-5" />
@@ -823,395 +741,28 @@ const SingleHotel = () => {
       </AnimatePresence>
 
       {/* --- BOOKING WIZARD MODAL --- */}
-      <AnimatePresence>
-        {isWizardOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-5xl overflow-hidden bg-white shadow-2xl rounded-2xl max-h-[90vh] flex flex-col md:flex-row"
-            >
-              {/* --- Wizard Sidebar / Summary --- */}
-              {wizardStep !== 3 && (
-                <div className="flex flex-col justify-between p-6 overflow-y-auto border-r bg-slate-50 md:w-1/3">
-                  <div>
-                    <h2 className="mb-4 text-2xl font-bold text-gray-800">
-                      Complete your Booking
-                    </h2>
-                    <div className="space-y-4">
-                      <div className="p-3 bg-white border rounded-lg shadow-sm">
-                        <h4 className="text-sm font-semibold text-gray-500 uppercase">
-                          Hotel
-                        </h4>
-                        <p className="font-bold text-gray-800">{hotel.name}</p>
-                        <p className="text-xs text-gray-500">{hotel.address}</p>
-                      </div>
-
-                      {/* ROOM DETAILS IN SIDEBAR SUMMARY */}
-                      <div className="p-3 bg-white border rounded-lg shadow-sm">
-                        <h4 className="mb-2 text-sm font-semibold text-gray-500 uppercase">
-                          Room Details
-                        </h4>
-                        <div className="space-y-3">
-                          {bookingSummary.items.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-start justify-between pb-2 text-sm border-b border-gray-100 border-dashed last:border-0 last:pb-0"
-                            >
-                              <div className="flex flex-col">
-                                {/* Room Type display */}
-                                <span className="font-bold text-gray-800">
-                                  {item.name}
-                                </span>
-                                <span className="text-xs font-semibold text-primary">
-                                  x {item.qty} Room(s)
-                                </span>
-                              </div>
-                              <span className="font-medium text-gray-900">
-                                {currency} {convertPrice(item.total)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="p-3 bg-white border rounded-lg shadow-sm">
-                        <h4 className="text-sm font-semibold text-gray-500 uppercase">
-                          Total Cost
-                        </h4>
-                        <p className="text-2xl font-extrabold text-primary">
-                          {currency} {convertPrice(bookingSummary.finalTotal)}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Includes taxes & fees
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-6">
-                    <Button
-                      variant="outline"
-                      onClick={closeWizard}
-                      className="w-full text-red-600 border-red-200 hover:bg-red-50"
-                    >
-                      Cancel Booking
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* --- Wizard Main Content --- */}
-              <div
-                className={cn(
-                  "flex-1 overflow-y-auto p-6 md:p-8",
-                  wizardStep === 3 && "w-full bg-slate-50"
-                )}
-              >
-                {/* STEP 3: SUCCESS SUMMARY */}
-                {wizardStep === 3 ? (
-                  <div className="max-w-3xl mx-auto space-y-8 duration-300 animate-in zoom-in">
-                    <div className="text-center">
-                      <div className="inline-flex items-center justify-center w-20 h-20 mb-4 bg-green-100 rounded-full">
-                        <CheckCircle2 className="w-10 h-10 text-green-600" />
-                      </div>
-                      <h2 className="text-3xl font-extrabold text-gray-900">
-                        Booking Confirmed!
-                      </h2>
-                      <p className="text-lg text-gray-500">
-                        Thank you for your reservation,{" "}
-                        {guestDetails.name.split(" ")[0]}.
-                      </p>
-                    </div>
-
-                    <div className="overflow-hidden bg-white border shadow-lg rounded-2xl">
-                      <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
-                        <h3 className="font-bold text-gray-700">
-                          Reservation Receipt
-                        </h3>
-                        <span className="px-3 py-1 text-xs font-bold text-green-700 uppercase bg-green-100 rounded-full">
-                          {paymentMethod === "later"
-                            ? "Pay at Hotel"
-                            : "Paid Online"}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
-                        <div>
-                          <h4 className="text-xs font-bold tracking-wider text-gray-400 uppercase">
-                            Guest Details
-                          </h4>
-                          <p className="text-lg font-bold text-gray-800">
-                            {guestDetails.name}
-                          </p>
-                          <p className="text-gray-600">{guestDetails.email}</p>
-                          <p className="text-gray-600">{guestDetails.phone}</p>
-                          <p className="mt-1 text-sm text-gray-600">
-                            {guestDetails.address}
-                          </p>
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold tracking-wider text-gray-400 uppercase">
-                            Stay Info
-                          </h4>
-                          <p className="text-lg font-bold text-gray-800">
-                            {nights} Night(s)
-                          </p>
-                          <p className="text-gray-600">
-                            {format(date.from, "MMM dd")} -{" "}
-                            {format(date.to, "MMM dd, yyyy")}
-                          </p>
-                          <p className="text-gray-600">
-                            {totalGuests} Guest(s)
-                          </p>
-                        </div>
-                      </div>
-                      {/* Room Details in Receipt */}
-                      <div className="px-6 py-4 border-t border-b bg-gray-50/50">
-                        <h4 className="mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase">
-                          Room Breakdown
-                        </h4>
-                        <div className="space-y-3">
-                          {bookingSummary.items.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between text-sm"
-                            >
-                              <div className="flex flex-col">
-                                {/* Specific Room Title Display */}
-                                <span className="text-base font-bold text-gray-800">
-                                  {item.name}
-                                </span>
-                                <span className="text-xs font-semibold tracking-wide text-gray-500 uppercase">
-                                  Qty: {item.qty}
-                                </span>
-                              </div>
-                              <span className="font-bold text-gray-900">
-                                {currency} {convertPrice(item.total)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="px-6 py-4 bg-gray-50">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-gray-600">
-                            Total Amount
-                          </span>
-                          <span className="text-2xl font-bold text-primary">
-                            {currency} {convertPrice(bookingSummary.finalTotal)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-center gap-4">
-                      {/* FINISH BUTTON WITH HOME NAVIGATION */}
-                      <Button
-                        onClick={handleFinishBooking}
-                        size="lg"
-                        className="w-full text-white bg-gray-900 md:w-auto hover:bg-black"
-                      >
-                        Finish & Go Home
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  // STEPS 1 & 2
-                  <div className="space-y-8">
-                    {/* SECTION 1: GUEST DETAILS */}
-                    <div
-                      className={cn(
-                        "transition-all duration-300",
-                        wizardStep === 2 &&
-                          "opacity-60 grayscale pointer-events-none"
-                      )}
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="flex items-center text-xl font-bold text-black">
-                          <span className="flex items-center justify-center w-8 h-8 mr-3 text-sm text-white rounded-full bg-primary">
-                            1
-                          </span>
-                          Guest Details
-                        </h3>
-                        {isGuestDetailsSaved && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleEditGuestDetails}
-                          >
-                            <Pencil className="w-3 h-3 mr-2" /> Edit
-                          </Button>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label className="text-gray-700">Full Name</Label>
-                          <Input
-                            className="font-medium text-black"
-                            name="name"
-                            value={guestDetails.name}
-                            onChange={handleGuestInputChange}
-                            disabled={isGuestDetailsSaved}
-                            placeholder="John Doe"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-gray-700">Phone Number</Label>
-                          <Input
-                            className="font-medium text-black"
-                            name="phone"
-                            value={guestDetails.phone}
-                            onChange={handleGuestInputChange}
-                            disabled={isGuestDetailsSaved}
-                            placeholder="+94 77 ..."
-                          />
-                        </div>
-                        <div className="col-span-1 space-y-2 md:col-span-2">
-                          <Label className="text-gray-700">Address</Label>
-                          <Input
-                            className="font-medium text-black"
-                            name="address"
-                            value={guestDetails.address}
-                            onChange={handleGuestInputChange}
-                            disabled={isGuestDetailsSaved}
-                            placeholder="123 Main St..."
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-gray-700">Email</Label>
-                          <Input
-                            className="font-medium text-black"
-                            name="email"
-                            value={guestDetails.email}
-                            onChange={handleGuestInputChange}
-                            disabled={isGuestDetailsSaved}
-                            placeholder="john@example.com"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-gray-700">
-                            ID / Passport Number
-                          </Label>
-                          <Input
-                            className="font-medium text-black"
-                            name="idNumber"
-                            value={guestDetails.idNumber}
-                            onChange={handleGuestInputChange}
-                            disabled={isGuestDetailsSaved}
-                            placeholder="NIC or Passport"
-                          />
-                        </div>
-                      </div>
-
-                      {!isGuestDetailsSaved && (
-                        <div className="flex justify-end mt-4">
-                          <Button
-                            onClick={handleSaveGuestDetails}
-                            className="bg-blue-600 hover:bg-blue-700"
-                          >
-                            Save & Continue
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* SECTION 2: PAYMENT */}
-                    <div
-                      className={cn(
-                        "transition-all duration-300 pt-6 border-t",
-                        !isGuestDetailsSaved &&
-                          "opacity-40 blur-sm pointer-events-none"
-                      )}
-                    >
-                      <div className="flex items-center mb-4">
-                        <span className="flex items-center justify-center w-8 h-8 mr-3 text-sm text-white rounded-full bg-primary">
-                          2
-                        </span>
-                        <h3 className="text-xl font-bold text-black">
-                          Payment Method
-                        </h3>
-                      </div>
-
-                      {isGuestDetailsSaved && (
-                        <div className="space-y-6 animate-in slide-in-from-bottom-5">
-                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div
-                              className={cn(
-                                "border-2 rounded-xl p-4 cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center gap-3 text-center",
-                                paymentMethod === "later"
-                                  ? "border-primary bg-primary/5"
-                                  : "border-muted"
-                              )}
-                              onClick={handlePayLater}
-                            >
-                              <Wallet className="w-8 h-8 text-gray-600" />
-                              <div>
-                                <h4 className="font-bold text-black">
-                                  Pay Later
-                                </h4>
-                                <p className="text-xs text-muted-foreground">
-                                  Reserve now, pay at hotel.
-                                </p>
-                              </div>
-                            </div>
-
-                            <div
-                              className={cn(
-                                "border-2 rounded-xl p-4 cursor-pointer hover:border-primary transition-colors flex flex-col items-center justify-center gap-3 text-center",
-                                paymentMethod === "now"
-                                  ? "border-primary bg-primary/5"
-                                  : "border-muted"
-                              )}
-                              onClick={() => setPaymentMethod("now")}
-                            >
-                              <CreditCard className="w-8 h-8 text-gray-600" />
-                              <div>
-                                <h4 className="font-bold text-black">
-                                  Pay Now
-                                </h4>
-                                <p className="text-xs text-muted-foreground">
-                                  Secure payment via Stripe.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* STRIPE FORM AREA */}
-                          <AnimatePresence>
-                            {paymentMethod === "now" && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                              >
-                                <Elements stripe={stripePromise}>
-                                  <StripePaymentForm
-                                    amount={convertPrice(
-                                      bookingSummary.finalTotal
-                                    )}
-                                    currency={currency}
-                                    onSuccess={handlePaymentSuccess}
-                                  />
-                                </Elements>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <BookingWizard
+        isWizardOpen={isWizardOpen}
+        closeWizard={closeWizard}
+        hotel={hotel}
+        wizardStep={wizardStep}
+        bookingSummary={bookingSummary}
+        guestDetails={guestDetails}
+        handleGuestInputChange={handleGuestInputChange}
+        handleSaveGuestDetails={handleSaveGuestDetails}
+        handleEditGuestDetails={handleEditGuestDetails}
+        isGuestDetailsSaved={isGuestDetailsSaved}
+        paymentMethod={paymentMethod}
+        setPaymentMethod={setPaymentMethod}
+        handlePayLater={handlePayLater}
+        handlePaymentSuccess={handlePaymentSuccess}
+        handleFinishBooking={handleFinishBooking}
+        currency={currency}
+        convertPrice={convertPrice}
+        date={date}
+        nights={nights}
+        totalGuests={totalGuests}
+      />
     </div>
   );
 };
