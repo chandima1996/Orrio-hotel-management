@@ -1,6 +1,20 @@
-import Hotel from "../models/Hotel.js";
+import Hotel, {
+  HOTEL_TYPES,
+  HOTEL_AMENITIES,
+  HOTEL_FEATURES,
+} from "../models/Hotel.js";
 
-// Create, Update, Delete, GetSingle එහෙමම තියන්න...
+export const getHotelConstants = (req, res) => {
+  try {
+    res.status(200).json({
+      types: HOTEL_TYPES,
+      amenities: HOTEL_AMENITIES,
+      features: HOTEL_FEATURES,
+    });
+  } catch (err) {
+    res.status(500).json(err);
+  }
+};
 
 export const createHotel = async (req, res, next) => {
   const newHotel = new Hotel(req.body);
@@ -43,96 +57,77 @@ export const getHotel = async (req, res, next) => {
   }
 };
 
-// --- SEARCH & FILTER LOGIC ---
+// --- GET ALL HOTELS (CORRECTED) ---
 export const getHotels = async (req, res, next) => {
+  // FIX: 'page' එක මෙතනින් destructure කරලා අයින් කරගන්න ඕනේ.
+  // නැත්නම් ඒක 'others' එකට ගිහින් DB query එක අවුල් කරනවා.
+  const {
+    min,
+    max,
+    limit,
+    page,
+    sort,
+    city,
+    type,
+    featured,
+    amenities,
+    search,
+    ...others
+  } = req.query;
+
   try {
-    // 1. amenities parameter එකත් මෙතනට ගන්න
-    const { min, max, limit, type, featured, search, sort, amenities } =
-      req.query;
+    const minPrice = min || 0;
+    const maxPrice = max || 10000000;
 
-    let query = {};
+    let query = {
+      ...others,
+      "price.normal": { $gte: minPrice, $lte: maxPrice },
+    };
 
-    // --- Super Search Logic (Existing) ---
     if (search) {
       query.$or = [
+        { city: { $regex: search, $options: "i" } },
         { name: { $regex: search, $options: "i" } },
         { country: { $regex: search, $options: "i" } },
-        { city: { $regex: search, $options: "i" } },
-        { address: { $regex: search, $options: "i" } },
-        { type: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { amenities: { $regex: search, $options: "i" } },
       ];
+    } else if (city) {
+      query.city = { $regex: city, $options: "i" };
     }
 
-    // --- Type Filter ---
     if (type && type !== "All") {
-      if (search) {
-        query = { $and: [query, { type: type }] };
-      } else {
-        query.type = type;
-      }
+      query.type = type;
     }
 
-    // --- Price Filter ---
-    if (min || max) {
-      const priceQuery = {};
-      if (min) priceQuery.$gte = Number(min);
-      if (max) priceQuery.$lte = Number(max);
-
-      if (Object.keys(query).length > 0) {
-        if (!query.$and) query.$and = [];
-        query.$and.push({ "price.normal": priceQuery });
-      } else {
-        query["price.normal"] = priceQuery;
-      }
-    }
-
-    // --- NEW: Amenities Filter Logic ---
-    if (amenities) {
-      // Frontend එකෙන් එන්නේ "Wifi,Pool,Gym" වගේ string එකක්
-      const amenitiesList = amenities.split(",");
-
-      // $all පාවිච්චි කරන්නේ තෝරාගත් *සියලුම* පහසුකම් තියෙන ඒවා විතරක් පෙන්නන්න.
-      const amenityQuery = { amenities: { $all: amenitiesList } };
-
-      if (Object.keys(query).length > 0) {
-        if (!query.$and) query.$and = [];
-        query.$and.push(amenityQuery);
-      } else {
-        Object.assign(query, amenityQuery);
-      }
-    }
-
-    // --- Featured Filter ---
     if (featured) {
       query.featured = featured === "true";
     }
 
-    // --- Sorting ---
-    let sortOptions = {};
-    if (sort === "price_asc") sortOptions["price.normal"] = 1;
-    else if (sort === "price_desc") sortOptions["price.normal"] = -1;
-    else if (sort === "rating") sortOptions["rating"] = -1;
-    else sortOptions["createdAt"] = -1;
+    if (amenities) {
+      const amenitiesList = amenities.split(",");
+      query.amenities = { $all: amenitiesList };
+    }
 
-    // --- Pagination ---
-    const page = parseInt(req.query.page) || 1;
-    const limitVal = parseInt(req.query.limit) || 9;
-    const skip = (page - 1) * limitVal;
+    let sortOptions = { createdAt: -1 };
+    if (sort === "price_asc") sortOptions = { "price.normal": 1 };
+    else if (sort === "price_desc") sortOptions = { "price.normal": -1 };
+    else if (sort === "rating") sortOptions = { rating: -1 };
+
+    const pageNum = parseInt(page) || 1;
+    const limitVal = parseInt(limit) || 9;
+    const skip = (pageNum - 1) * limitVal;
 
     const hotels = await Hotel.find(query)
       .sort(sortOptions)
-      .skip(skip)
-      .limit(limitVal);
+      .limit(limitVal)
+      .skip(skip);
 
-    const totalCount = await Hotel.countDocuments(query);
+    const count = await Hotel.countDocuments(query);
 
     res.status(200).json({
-      hotels,
-      totalCount,
-      totalPages: Math.ceil(totalCount / limitVal),
-      currentPage: page,
+      hotels: hotels,
+      totalPages: Math.ceil(count / limitVal),
+      currentPage: pageNum,
+      totalCount: count,
     });
   } catch (err) {
     next(err);

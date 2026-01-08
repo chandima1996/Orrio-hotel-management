@@ -13,130 +13,104 @@ import { Button } from "@/components/ui/button";
 
 const Footer = () => {
   return (
-    <footer className="bg-background text-foreground pt-20 pb-10 border-t border-border relative overflow-hidden transition-colors duration-300">
+    <footer className="relative pt-20 pb-10 overflow-hidden transition-colors duration-300 border-t bg-background text-foreground border-border">
       {/* Background Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-primary/5 blur-[100px] rounded-full pointer-events-none" />
 
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+      {/* UPDATED CONTAINER: 
+          Navbar එකට සමානව 'md:px-8' එකතු කරන ලදී. 
+          දැන් වම් සහ දකුණු මායිම් (Margins) Navbar සහ Stats සමග සමාන වේ.
+      */}
+      <div className="container relative z-10 px-4 mx-auto md:px-8">
+        {/* Main Footer Content */}
+        <div className="grid grid-cols-1 gap-12 mb-16 md:grid-cols-2 lg:grid-cols-4">
           {/* 1. Brand Info */}
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-tr from-primary to-blue-600 rounded-xl flex items-center justify-center shadow-lg text-white">
-                <span className="font-bold text-xl">O</span>
+              <div className="flex items-center justify-center w-10 h-10 text-white shadow-lg bg-gradient-to-tr from-primary to-blue-600 rounded-xl">
+                <span className="text-xl font-bold">O</span>
               </div>
-              <span className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">
+              <span className="text-2xl font-bold tracking-tight text-primary">
                 Orrio
               </span>
             </Link>
-            <p className="text-muted-foreground leading-relaxed text-sm">
-              The world's first AI-powered futuristic hotel booking platform.
-              Experience luxury, comfort, and technology combined in one place.
+            <p className="leading-relaxed text-muted-foreground">
+              Experience luxury and comfort in the heart of the city. Your
+              perfect stay awaits with premium amenities and service.
             </p>
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <MapPin className="w-4 h-4 text-primary" />
+              <span>123 Hotel Avenue, Colombo 07</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Phone className="w-4 h-4 text-primary" />
+              <span>+94 11 234 5678</span>
+            </div>
           </div>
 
-          {/* 2. Quick Links (Updated with real Links) */}
+          {/* 2. Quick Links */}
           <div>
-            <h3 className="text-lg font-bold mb-6 text-foreground">Company</h3>
-            <ul className="space-y-4">
-              <li>
-                <Link
-                  to="/about"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                >
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/careers"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                >
-                  Careers
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/blog"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                >
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/press"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm"
-                >
-                  Press
-                </Link>
-              </li>
+            <h3 className="mb-6 text-lg font-semibold">Quick Links</h3>
+            <ul className="space-y-3">
+              {[
+                { name: "Home", path: "/" },
+                { name: "Find Hotels", path: "/find-hotels" },
+                { name: "About Us", path: "/about" },
+                { name: "Contact", path: "/contact" },
+                { name: "Privacy Policy", path: "/privacy" },
+              ].map((link) => (
+                <li key={link.name}>
+                  <Link
+                    to={link.path}
+                    className="transition-colors text-muted-foreground hover:text-primary"
+                  >
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* 3. Support & Contact (Updated with Privacy Policy) */}
+          {/* 3. Support */}
           <div>
-            <h3 className="text-lg font-bold mb-6 text-foreground">Support</h3>
-            <ul className="space-y-4 text-sm text-muted-foreground">
-              <li className="flex items-center gap-3">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span>123 Future Street, Tech City</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Phone className="w-4 h-4 text-primary" />
-                <span>+94 77 123 4567</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Mail className="w-4 h-4 text-primary" />
-                <span>support@orrio.com</span>
-              </li>
-              {/* Links */}
-              <li className="pt-2">
-                <Link
-                  to="/contact"
-                  className="hover:text-primary transition-colors block"
-                >
-                  Contact Us
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/privacy"
-                  className="hover:text-primary transition-colors block"
-                >
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/terms"
-                  className="hover:text-primary transition-colors block"
-                >
-                  Terms of Service
-                </Link>
-              </li>
+            <h3 className="mb-6 text-lg font-semibold">Support</h3>
+            <ul className="space-y-3">
+              {[
+                "FAQ",
+                "Help Center",
+                "Terms of Service",
+                "Cancellation Policy",
+                "Partner with us",
+              ].map((item) => (
+                <li key={item}>
+                  <a
+                    href="#"
+                    className="transition-colors text-muted-foreground hover:text-primary"
+                  >
+                    {item}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* 4. Newsletter */}
           <div>
-            <h3 className="text-lg font-bold mb-6 text-foreground">
-              Stay Updated
-            </h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              Subscribe to our newsletter for the latest AI travel trends and
-              exclusive offers.
+            <h3 className="mb-6 text-lg font-semibold">Newsletter</h3>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Subscribe to get special offers, free giveaways, and
+              once-in-a-lifetime deals.
             </p>
-            <div className="flex flex-col gap-3">
+            <div className="space-y-3">
               <div className="relative">
                 <input
                   type="email"
                   placeholder="Enter your email"
-                  className="w-full bg-muted/50 border border-input rounded-lg px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-muted-foreground"
+                  className="w-full px-4 py-3 text-sm transition-all border rounded-lg bg-muted/50 border-input text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted-foreground"
                 />
-                <Mail className="absolute right-3 top-3 text-muted-foreground w-4 h-4" />
+                <Mail className="absolute w-4 h-4 top-3 right-3 text-muted-foreground" />
               </div>
-              <Button className="w-full bg-primary hover:bg-blue-600 text-white">
+              <Button className="w-full text-white bg-primary hover:bg-blue-600">
                 Subscribe <Send className="w-4 h-4 ml-2" />
               </Button>
             </div>
@@ -147,8 +121,8 @@ const Footer = () => {
         <div className="h-[1px] bg-border w-full mb-8" />
 
         {/* Bottom Bar */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-muted-foreground text-sm">
+        <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+          <p className="text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} Orrio Inc. All rights reserved.
           </p>
 
@@ -157,7 +131,7 @@ const Footer = () => {
               <a
                 key={index}
                 href="#"
-                className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-white transition-all duration-300"
+                className="flex items-center justify-center w-10 h-10 transition-all duration-300 rounded-full bg-muted text-muted-foreground hover:bg-primary hover:text-white"
               >
                 <Icon className="w-4 h-4" />
               </a>

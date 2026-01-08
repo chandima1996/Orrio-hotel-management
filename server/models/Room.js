@@ -1,5 +1,45 @@
 import mongoose from "mongoose";
 
+// --- CONSTANTS ---
+export const ROOM_TYPES = [
+  "Single Room",
+  "Double Room",
+  "Twin Room",
+  "King Room",
+  "Queen Room",
+  "Deluxe Room",
+  "Suite",
+  "Presidential Suite",
+  "Penthouse",
+  "Studio Apartment",
+  "Villa",
+  "Cabana",
+  "Family Room",
+];
+
+export const ROOM_AMENITIES = [
+  "King Bed",
+  "Queen Bed",
+  "2 Queen Beds",
+  "Twin Beds",
+  "Ocean Balcony",
+  "City View",
+  "Garden View",
+  "Minibar",
+  "Kitchen",
+  "Kitchenette",
+  "Pool Access",
+  "Smart TV",
+  "Work Desk",
+  "Bathtub",
+  "Jacuzzi",
+  "Free Wifi",
+  "AC",
+  "Room Service",
+  "Hair Dryer",
+  "Ironing Facilities",
+];
+
 const roomSchema = new mongoose.Schema(
   {
     hotelId: {
@@ -11,48 +51,33 @@ const roomSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    // --- Added Type Field ---
+    type: {
+      type: String,
+      enum: ROOM_TYPES,
+      required: true,
+    },
     description: {
       type: String,
       required: true,
     },
     price: {
-      normal: {
-        type: Number,
-        required: true,
-      },
-      discount: {
-        type: Number,
-        default: 0,
-      },
+      normal: { type: Number, required: true },
+      discount: { type: Number, default: 0 },
     },
     capacity: {
       type: Number,
       required: true,
     },
     size: {
-      type: Number,
+      type: Number, // in sq meters/feet
     },
     images: {
       type: [String],
     },
-    // --- Room Amenities ---
     amenities: {
       type: [String],
-      // මෙන්න මෙතනට අපි "Queen Bed" එකතු කරා
-      enum: [
-        "King Bed",
-        "Queen Bed", // <--- NEW ADDITION
-        "2 Queen Beds",
-        "Ocean Balcony",
-        "Minibar",
-        "Kitchen",
-        "Pool Access",
-        "Smart TV",
-        "Work Desk",
-        "Bathtub",
-        "Free Wifi",
-        "AC",
-      ],
+      enum: ROOM_AMENITIES,
     },
     roomNumbers: [
       {

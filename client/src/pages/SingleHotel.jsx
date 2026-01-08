@@ -4,6 +4,7 @@ import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, differenceInCalendarDays } from "date-fns";
 import { useCurrency } from "@/context/CurrencyContext";
+import { useUser } from "@clerk/clerk-react"; // Clerk Auth
 import { Toaster, toast } from "sonner";
 
 // UI Components
@@ -42,6 +43,7 @@ const SingleHotel = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { currency, convertPrice } = useCurrency();
+  const { user, isSignedIn } = useUser(); // Get Clerk User
 
   const [hotel, setHotel] = useState(null);
   const [rooms, setRooms] = useState([]);
@@ -221,6 +223,58 @@ const SingleHotel = () => {
     return { items, subTotal, serviceFee, tax, finalTotal };
   }, [confirmedQuantities, rooms, nights]);
 
+  // --- HELPER: Save Bookings to DB ---
+  const saveBookingsToDB = async (method) => {
+    if (!isSignedIn || !user) {
+      toast.error("Please sign in to complete booking.");
+      return false;
+    }
+
+    try {
+      // 1. Get MongoDB User ID using Clerk ID
+      const userRes = await axios.get(
+        `http://localhost:5000/api/users/${user.id}`
+      );
+
+      if (!userRes.data.success) {
+        throw new Error("User not found in database");
+      }
+
+      const mongoUserId = userRes.data.data._id;
+
+      // 2. Loop through selected rooms and create bookings
+      const entries = Object.entries(confirmedQuantities);
+
+      for (const [roomId, qty] of entries) {
+        const room = rooms.find((r) => r._id === roomId);
+        if (!room) continue;
+
+        // Price for ONE room for the total nights
+        const pricePerRoom = (room.price.normal - room.price.discount) * nights;
+
+        // If user selected 2 rooms, create 2 separate bookings
+        for (let i = 0; i < qty; i++) {
+          const bookingData = {
+            userId: mongoUserId,
+            hotelId: hotel._id,
+            roomId: roomId,
+            checkIn: date.from,
+            checkOut: date.to,
+            totalPrice: pricePerRoom, // Price per specific booking instance
+            paymentMethod: method === "payNow" ? "payNow" : "payLater",
+          };
+
+          await axios.post("http://localhost:5000/api/bookings", bookingData);
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error("Booking Error:", error);
+      toast.error("Failed to save booking. Please try again.");
+      return false;
+    }
+  };
+
   // --- WIZARD HANDLERS ---
   const handleGuestInputChange = (e) => {
     const { name, value } = e.target;
@@ -234,7 +288,7 @@ const SingleHotel = () => {
   const handleSaveGuestDetails = () => {
     if (validateGuestDetails()) {
       setIsGuestDetailsSaved(true);
-      setWizardStep(2); // <--- MENNA ME LINE EKA ADD KARANNA
+      setWizardStep(2); // Move to Payment Step
     } else {
       toast.error("Missing Information", {
         description: "Please fill in all guest details to continue.",
@@ -248,19 +302,40 @@ const SingleHotel = () => {
     setWizardStep(1);
   };
 
-  const handlePayLater = () => {
-    toast.info("Payment Information", {
-      description: "You must complete payment within 24 hours to confirm.",
-      duration: 5000,
-      position: "top-center",
-    });
-    setPaymentMethod("later");
-    setWizardStep(3);
+  // --- Handle Pay Later ---
+  const handlePayLater = async () => {
+    const toastId = toast.loading("Processing your booking...");
+    const success = await saveBookingsToDB("payLater");
+
+    if (success) {
+      toast.dismiss(toastId);
+      toast.success("Booking Confirmed!", {
+        description: "You can view this in your dashboard.",
+        position: "top-center",
+      });
+      setPaymentMethod("later");
+      setWizardStep(3); // Show Success Screen
+    } else {
+      toast.dismiss(toastId);
+    }
   };
 
-  const handlePaymentSuccess = (details) => {
-    setPaymentMethod("card");
-    setWizardStep(3);
+  // --- Handle Pay Now (Stripe Success) ---
+  const handlePaymentSuccess = async (details) => {
+    const toastId = toast.loading("Finalizing booking...");
+    const success = await saveBookingsToDB("payNow");
+
+    if (success) {
+      toast.dismiss(toastId);
+      toast.success("Payment Successful!", {
+        description: "Your room has been reserved.",
+        position: "top-center",
+      });
+      setPaymentMethod("card"); // For display in receipt
+      setWizardStep(3); // Show Success Screen
+    } else {
+      toast.dismiss(toastId);
+    }
   };
 
   const closeWizard = () => {
@@ -754,6 +829,7 @@ const SingleHotel = () => {
         isGuestDetailsSaved={isGuestDetailsSaved}
         paymentMethod={paymentMethod}
         setPaymentMethod={setPaymentMethod}
+        // --- Pass the new handlers that call the backend ---
         handlePayLater={handlePayLater}
         handlePaymentSuccess={handlePaymentSuccess}
         handleFinishBooking={handleFinishBooking}

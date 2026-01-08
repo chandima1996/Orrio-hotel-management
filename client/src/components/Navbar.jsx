@@ -8,22 +8,22 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useTheme } from "@/components/theme-provider";
 
-// --- අලුතින් එකතු කල Import එක ---
+// Context
 import { useCurrency } from "@/context/CurrencyContext";
 
 const Navbar = () => {
   const { user } = useUser();
   const { setTheme, theme } = useTheme();
 
-  // --- වෙනස් කල කොටස (Local State එක වෙනුවට Global Context) ---
+  // Currency Context
   const { currency, setCurrency } = useCurrency();
 
   const location = useLocation();
 
-  // 1. Admin Check Logic
+  // --- 1. Admin Check Logic ---
   const isAdmin = user?.publicMetadata?.role === "admin";
 
-  // 2. Base Navigation Links
+  // --- 2. Base Navigation Links ---
   const baseLinks = [
     { name: "Home", path: "/" },
     { name: "Find Hotels", path: "/find-hotels" },
@@ -31,18 +31,24 @@ const Navbar = () => {
     { name: "Contact", path: "/contact" },
   ];
 
-  // 3. Dynamic Links Generator
+  // --- 3. Dynamic Links Generator (Admin vs User Logic) ---
   const getNavLinks = () => {
     const links = [...baseLinks];
     if (user) {
       if (isAdmin) {
+        // Admin නම් Admin Dashboard පෙන්වන්න
         links.push({
           name: "Admin Dashboard",
           path: "/admin/dashboard",
           active: true,
         });
       } else {
-        links.push({ name: "My Dashboard", path: "/dashboard", active: true });
+        // User නම් My Dashboard පෙන්වන්න
+        links.push({
+          name: "My Dashboard",
+          path: "/dashboard",
+          active: true,
+        });
       }
     }
     return links;
@@ -50,27 +56,26 @@ const Navbar = () => {
 
   const finalLinks = getNavLinks();
 
-  // --- Currency Toggle Logic (Updated) ---
+  // --- Currency Toggle Logic ---
   const toggleCurrency = () => {
-    // USD නම් LKR කරන්න, නැත්නම් USD කරන්න (Global Context එකේ)
     setCurrency(currency === "USD" ? "LKR" : "USD");
   };
 
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 border-b border-white/10 bg-white/60 dark:bg-black/40 backdrop-blur-xl shadow-sm transition-all duration-300">
-      <div className="container mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
-        {/* Logo */}
+    <nav className="fixed top-0 left-0 z-50 w-full transition-all duration-300 border-b shadow-sm border-white/10 bg-white/60 dark:bg-black/40 backdrop-blur-xl">
+      <div className="container flex items-center justify-between h-20 px-4 mx-auto md:px-8">
+        {/* --- LOGO SECTION --- */}
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 bg-gradient-to-tr from-primary to-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-primary/50 transition-all">
-            <span className="text-white font-bold text-xl">O</span>
+          <div className="flex items-center justify-center w-10 h-10 transition-all shadow-lg bg-gradient-to-tr from-primary to-blue-600 rounded-xl group-hover:shadow-primary/50">
+            <span className="text-xl font-bold text-white">O</span>
           </div>
-          <span className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">
+          <span className="text-2xl font-bold tracking-tight text-transparent bg-gradient-to-r from-primary to-blue-400 bg-clip-text">
             Orrio
           </span>
         </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-8">
+        {/* --- DESKTOP NAVIGATION --- */}
+        <div className="items-center hidden gap-8 md:flex">
           {finalLinks.map((link) => (
             <Link
               key={link.name}
@@ -86,29 +91,31 @@ const Navbar = () => {
           ))}
         </div>
 
-        {/* Right Section */}
-        <div className="hidden md:flex items-center gap-4">
+        {/* --- RIGHT SECTION (Currency, Theme, Auth) --- */}
+        <div className="items-center hidden gap-4 md:flex">
           {/* Currency Button */}
           <Button
             variant="ghost"
             size="sm"
             onClick={toggleCurrency}
-            className="gap-1 font-bold text-xs border border-white/10 hover:bg-white/10"
+            className="gap-1 text-xs font-bold border border-white/10 hover:bg-white/10"
           >
             <DollarSign className="w-3 h-3" />
             {currency}
           </Button>
 
+          {/* Theme Toggle Button */}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="rounded-full"
+            className="relative rounded-full"
           >
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-orange-500" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-blue-400" />
+            <Sun className="w-5 h-5 text-orange-500 transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute w-5 h-5 text-blue-400 transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100" />
           </Button>
 
+          {/* Auth Logic */}
           <SignedOut>
             <div className="flex gap-2">
               <Link to="/sign-in">
@@ -117,7 +124,7 @@ const Navbar = () => {
                 </Button>
               </Link>
               <Link to="/sign-up">
-                <Button className="rounded-full px-6 bg-gradient-to-r from-primary to-blue-600 hover:opacity-90 transition-opacity">
+                <Button className="px-6 text-white transition-opacity rounded-full bg-gradient-to-r from-primary to-blue-600 hover:opacity-90">
                   Sign Up
                 </Button>
               </Link>
@@ -126,8 +133,7 @@ const Navbar = () => {
 
           <SignedIn>
             <div className="flex items-center gap-3">
-              {/* User Name Display */}
-              <span className="text-sm font-medium hidden lg:block">
+              <span className="hidden text-sm font-medium lg:block">
                 Hi, {user?.firstName}
               </span>
               <UserButton afterSignOutUrl="/" />
@@ -135,18 +141,19 @@ const Navbar = () => {
           </SignedIn>
         </div>
 
-        {/* Mobile Menu */}
-        <div className="md:hidden flex items-center gap-2">
-          {/* Mobile Currency Toggle Button (Optional if needed in header) */}
+        {/* --- MOBILE MENU (Hamburger) --- */}
+        <div className="flex items-center gap-2 md:hidden">
+          {/* Mobile Currency (Optional) */}
           <Button
             variant="ghost"
             size="sm"
             onClick={toggleCurrency}
-            className="gap-1 font-bold text-xs border border-white/10 mr-1"
+            className="gap-1 mr-1 text-xs font-bold border border-white/10"
           >
             {currency}
           </Button>
 
+          {/* Mobile Theme Toggle */}
           <Button
             variant="ghost"
             size="icon"
@@ -192,7 +199,9 @@ const Navbar = () => {
                       </Button>
                     </Link>
                     <Link to="/sign-up">
-                      <Button className="w-full">Sign Up</Button>
+                      <Button className="w-full text-white bg-primary">
+                        Sign Up
+                      </Button>
                     </Link>
                   </div>
                 </SignedOut>

@@ -5,9 +5,13 @@ import {
   getHotel,
   getHotels,
   updateHotel,
+  getHotelConstants, // <--- Import
 } from "../controllers/hotelController.js";
 
 const router = express.Router();
+
+// GET CONSTANTS (Must be first)
+router.get("/constants", getHotelConstants);
 
 // CREATE
 router.post("/", createHotel);

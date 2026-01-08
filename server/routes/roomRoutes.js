@@ -4,11 +4,15 @@ import {
   deleteRoom,
   getRoom,
   getRooms,
-  getRoomsByHotel, // මේක import කරන්න අමතක කරන්න එපා
+  getRoomsByHotel,
   updateRoom,
+  getRoomConstants, // <--- Import
 } from "../controllers/roomController.js";
 
 const router = express.Router();
+
+// GET CONSTANTS (Must be first to avoid ID conflict)
+router.get("/constants", getRoomConstants);
 
 // CREATE
 router.post("/:hotelid", createRoom);
@@ -19,13 +23,13 @@ router.put("/:id", updateRoom);
 // DELETE
 router.delete("/:id/:hotelid", deleteRoom);
 
-// GET ROOMS BY HOTEL ID (Frontend එකේ Single Hotel Page එකට ඕනේ කරන එක)
+// GET ROOMS BY HOTEL ID
 router.get("/hotel/:hotelid", getRoomsByHotel);
 
 // GET SINGLE ROOM
 router.get("/:id", getRoom);
 
-// GET ALL ROOMS (Admin side එකට වගේ ඕනේ වෙයි)
+// GET ALL ROOMS
 router.get("/", getRooms);
 
 export default router;

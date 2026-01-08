@@ -14,6 +14,7 @@ import {
   MapPin,
   RefreshCcw,
   Check,
+  Loader2, // Loader icon එක import කළා
 } from "lucide-react";
 import { useCurrency } from "@/context/CurrencyContext";
 
@@ -39,6 +40,7 @@ const FindHotels = () => {
   const [destination, setDestination] = useState(
     searchParams.get("search") || ""
   );
+  // Default value එක හිස් Array එකක් ලෙස තියන්න
   const [hotels, setHotels] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +48,7 @@ const FindHotels = () => {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedType, setSelectedType] = useState("");
-  const [selectedAmenities, setSelectedAmenities] = useState([]); // NEW: Amenities State
+  const [selectedAmenities, setSelectedAmenities] = useState([]);
   const [sortBy, setSortBy] = useState("newest");
 
   // Pagination & View
@@ -76,7 +78,7 @@ const FindHotels = () => {
 
       const currentAmenities = overrideParams.hasOwnProperty("amenities")
         ? overrideParams.amenities
-        : selectedAmenities; // Amenities Array එක ගන්නවා
+        : selectedAmenities;
 
       const currentSort = overrideParams.hasOwnProperty("sort")
         ? overrideParams.sort
@@ -110,18 +112,31 @@ const FindHotels = () => {
       if (currentType && currentType !== "All")
         params.append("type", currentType);
 
-      // NEW: Amenities array එක comma separated string එකක් විදියට යවනවා
       if (currentAmenities && currentAmenities.length > 0) {
         params.append("amenities", currentAmenities.join(","));
       }
 
       const res = await axios.get(`http://localhost:5000/api/hotels?${params}`);
 
-      setHotels(res.data.hotels);
-      setTotalPages(res.data.totalPages);
+      // --- CRITICAL FIX: Response Handling ---
+      let hotelData = [];
+      let total = 1;
+
+      // 1. Backend එකෙන් කෙලින්ම Array එකක් එනවා නම් (Pagination නැතුව)
+      if (Array.isArray(res.data)) {
+        hotelData = res.data;
+      }
+      // 2. Backend එකෙන් Object එකක් එනවා නම් ({ hotels: [], totalPages: ... })
+      else if (res.data && Array.isArray(res.data.hotels)) {
+        hotelData = res.data.hotels;
+        total = res.data.totalPages || 1;
+      }
+
+      setHotels(hotelData);
+      setTotalPages(total);
     } catch (err) {
       console.error("Error fetching hotels:", err);
-      setHotels([]);
+      setHotels([]); // Error ආවොත් Crash නොවෙන්න හිස් Array එකක් දානවා
     } finally {
       setLoading(false);
     }
@@ -134,7 +149,6 @@ const FindHotels = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // NEW: selectedAmenities වෙනස් වුනාමත් auto fetch වෙනවා
   useEffect(() => {
     fetchHotels();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,16 +161,14 @@ const FindHotels = () => {
     fetchHotels({ search: destination, page: 1 });
   };
 
-  // NEW: Amenities Checkbox Handler
   const handleAmenityChange = (amenity) => {
     setSelectedAmenities((prev) => {
       if (prev.includes(amenity)) {
-        return prev.filter((item) => item !== amenity); // Remove if exists
+        return prev.filter((item) => item !== amenity);
       } else {
-        return [...prev, amenity]; // Add if not exists
+        return [...prev, amenity];
       }
     });
-    // Note: useEffect will handle the fetch automatically
   };
 
   const handleReset = () => {
@@ -164,7 +176,7 @@ const FindHotels = () => {
     setMinPrice("");
     setMaxPrice("");
     setSelectedType("");
-    setSelectedAmenities([]); // Reset Amenities State
+    setSelectedAmenities([]);
     setSortBy("newest");
     setPage(1);
     setSearchParams({});
@@ -174,7 +186,7 @@ const FindHotels = () => {
       min: "",
       max: "",
       type: "",
-      amenities: [], // Reset API params
+      amenities: [],
       sort: "newest",
       page: 1,
     });
@@ -273,7 +285,7 @@ const FindHotels = () => {
               </div>
             </div>
 
-            {/* NEW: Amenities Filter Section */}
+            {/* Amenities Filter Section */}
             <div className="mb-6 space-y-3">
               <label className="text-sm font-semibold">Amenities</label>
               <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
@@ -293,7 +305,6 @@ const FindHotels = () => {
                         <Check className="w-3 h-3 text-white" />
                       )}
                     </div>
-                    {/* Hidden Native Checkbox for accessibility */}
                     <input
                       type="checkbox"
                       className="hidden"
@@ -364,54 +375,65 @@ const FindHotels = () => {
           {loading ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 animate-pulse">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-[350px] bg-gray-200 rounded-xl"></div>
+                <div
+                  key={i}
+                  className="h-[350px] bg-gray-200 dark:bg-muted rounded-xl flex items-center justify-center"
+                >
+                  <Loader2 className="w-10 h-10 animate-spin text-muted-foreground" />
+                </div>
               ))}
             </div>
-          ) : hotels.length === 0 ? (
-            <div className="py-20 text-center border-2 border-dashed rounded-xl">
-              <h3 className="text-xl font-bold text-gray-500">
-                No hotels found
-              </h3>
-              <p className="mt-2 text-sm text-gray-400">
-                Try removing some amenities or filters.
-              </p>
-              <Button variant="link" onClick={handleReset} className="mt-2">
-                Clear Filters
-              </Button>
-            </div>
           ) : (
+            // Safety Check: Array එකක් සහ හිස් නොවේ නම් පමණක් Map කරන්න
             <>
-              <div
-                className={`grid gap-6 ${
-                  viewMode === "grid"
-                    ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
-                    : "grid-cols-1"
-                }`}
-              >
-                {hotels.map((hotel) => (
-                  <HotelCard key={hotel._id} hotel={hotel} />
-                ))}
-              </div>
+              {Array.isArray(hotels) && hotels.length > 0 ? (
+                <>
+                  <div
+                    className={`grid gap-6 ${
+                      viewMode === "grid"
+                        ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+                        : "grid-cols-1"
+                    }`}
+                  >
+                    {hotels.map((hotel) => (
+                      <HotelCard key={hotel._id} hotel={hotel} />
+                    ))}
+                  </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex justify-center gap-4 mt-8">
-                  <Button
-                    variant="outline"
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <span className="py-2 font-semibold">
-                    Page {page} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    disabled={page === totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    <ChevronRight className="w-4 h-4" />
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center gap-4 mt-8">
+                      <Button
+                        variant="outline"
+                        disabled={page === 1}
+                        onClick={() => setPage((p) => p - 1)}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                      <span className="py-2 font-semibold">
+                        Page {page} of {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        disabled={page === totalPages}
+                        onClick={() => setPage((p) => p + 1)}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                // No Hotels Found
+                <div className="py-20 text-center border-2 border-dashed rounded-xl">
+                  <h3 className="text-xl font-bold text-gray-500">
+                    No hotels found
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-400">
+                    Try removing some amenities or filters.
+                  </p>
+                  <Button variant="link" onClick={handleReset} className="mt-2">
+                    Clear Filters
                   </Button>
                 </div>
               )}

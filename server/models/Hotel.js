@@ -1,5 +1,45 @@
 import mongoose from "mongoose";
 
+// --- CONSTANTS (Exporting for Controller use) ---
+export const HOTEL_TYPES = [
+  "Luxury Resort",
+  "City Hotel",
+  "Chalet",
+  "Villa",
+  "Apartment",
+  "Boutique Hotel",
+  "Guest House",
+  "Cottage",
+  "Hostel",
+  "Bungalow",
+];
+
+export const HOTEL_AMENITIES = [
+  "High-Speed Wifi",
+  "Infinity Pool",
+  "Luxury Gym",
+  "Fine Dining",
+  "Spa & Wellness",
+  "Bar / Lounge",
+  "Free Parking",
+  "Air Conditioning",
+  "Private Beach",
+  "24/7 Concierge",
+  "Meeting Rooms",
+  "Elevator",
+];
+
+export const HOTEL_FEATURES = [
+  "Private Beach Access",
+  "24/7 Room Service",
+  "Airport Shuttle",
+  "Kids Club",
+  "Water Sports Center",
+  "Cinema Room",
+  "Pet Friendly",
+  "Wheelchair Accessible",
+];
+
 const hotelSchema = new mongoose.Schema(
   {
     name: {
@@ -8,22 +48,21 @@ const hotelSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      required: true, // Example: "Luxury Resort", "Villa", "Hotel"
+      required: true,
+      enum: HOTEL_TYPES, // Validation added
     },
-    // --- NEW LOCATION FIELDS ---
     country: {
       type: String,
-      required: true, // Example: "Sri Lanka"
+      required: true,
     },
     city: {
       type: String,
-      required: true, // Example: "Colombo" (Town)
+      required: true,
     },
     address: {
       type: String,
-      required: true, // Example: "No 10, Galle Road"
+      required: true,
     },
-    // ---------------------------
     contact: {
       type: String,
       required: true,
@@ -40,14 +79,8 @@ const hotelSchema = new mongoose.Schema(
       type: [String],
     },
     price: {
-      normal: {
-        type: Number,
-        required: true,
-      },
-      discount: {
-        type: Number,
-        default: 0,
-      },
+      normal: { type: Number, required: true },
+      discount: { type: Number, default: 0 },
     },
     rating: {
       type: Number,
@@ -61,44 +94,18 @@ const hotelSchema = new mongoose.Schema(
     },
     amenities: {
       type: [String],
-      // Enums ටික එහෙමම තියන්න
-      enum: [
-        "High-Speed Wifi",
-        "Infinity Pool",
-        "Luxury Gym",
-        "Fine Dining",
-        "Spa & Wellness",
-        "Bar / Lounge",
-        "Free Parking",
-        "Air Conditioning",
-        "Private Beach",
-        "24/7 Concierge",
-      ],
+      enum: HOTEL_AMENITIES,
     },
     features: {
       type: [String],
-      enum: [
-        "Private Beach Access",
-        "24/7 Room Service",
-        "Airport Shuttle",
-        "Kids Club",
-        "Water Sports Center",
-        "Cinema Room",
-        "Butler Service",
-        "BBQ Facilities",
-        "Currency Exchange",
-        "Laundry Service",
-      ],
+      enum: HOTEL_FEATURES,
     },
-    rooms: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Room",
-      },
-    ],
     featured: {
       type: Boolean,
       default: false,
+    },
+    rooms: {
+      type: [String],
     },
   },
   { timestamps: true }

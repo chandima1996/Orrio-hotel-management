@@ -2,40 +2,40 @@ import React, { useEffect, useState } from "react";
 import { useUser } from "@clerk/clerk-react";
 import { useCurrency } from "../context/CurrencyContext";
 import axios from "axios";
+import { format, differenceInCalendarDays } from "date-fns";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+
 import {
-  Mail,
-  Edit2,
-  Save,
-  Lock,
-  History,
   Loader2,
-  Filter,
-  X,
   CalendarIcon,
   CreditCard,
+  History,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Filter,
+  X,
+  Eye, // Aluth Icon eka
+  MapPin,
+  BedDouble,
+  Calendar as CalendarIconLucide,
+  Receipt,
+  Hotel,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -44,25 +44,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+
+// Import your Stripe Form
+import StripePaymentForm from "@/components/StripePaymentForm";
+
+// Initialize Stripe
+const stripePromise = loadStripe("pk_test_TYooMQauvdEDq54NiTphI7jx");
 
 const MyDashboard = () => {
   const { user: clerkUser, isLoaded } = useUser();
   const { currency, convertPrice } = useCurrency();
 
   const [loading, setLoading] = useState(true);
-  const [dbUser, setDbUser] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-
-  // Filtering States
-  const [filterDate, setFilterDate] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-
-  // Booking Data
   const [bookings, setBookings] = useState({ upcoming: [], past: [] });
-  // To trigger re-fetch after payment
+  const [dbUser, setDbUser] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Filters
+  const [filterDate, setFilterDate] = useState(undefined);
+  const [filterStatus, setFilterStatus] = useState("all");
+
+  // User Profile Form
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -71,57 +86,45 @@ const MyDashboard = () => {
     country: "",
   });
 
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordOpen, setPasswordOpen] = useState(false);
-
-  // --- Fetch Data ---
   useEffect(() => {
     const fetchData = async () => {
       if (isLoaded && clerkUser) {
         try {
           setLoading(true);
+
           // 1. Get User Details
           const userRes = await axios.get(
             `http://localhost:5000/api/users/${clerkUser.id}`
           );
 
           if (userRes.data.success) {
-            setDbUser(userRes.data.data);
+            const userData = userRes.data.data;
+            setDbUser(userData);
             setFormData({
-              firstName: userRes.data.data.firstName || "",
-              lastName: userRes.data.data.lastName || "",
-              phone: userRes.data.data.phone || "",
-              address: userRes.data.data.address || "",
-              country: userRes.data.data.country || "",
+              firstName: userData.firstName || "",
+              lastName: userData.lastName || "",
+              phone: userData.phone || "",
+              address: userData.address || "",
+              country: userData.country || "",
             });
 
-            // 2. Get Bookings (Real API Call)
-            // Note: We need the MongoDB _id of the user for bookings, not Clerk ID
-            // Assuming userRes.data.data._id exists
-            const userId = userRes.data.data._id;
-
+            // 2. Get Bookings using MongoDB _id
+            const userId = userData._id;
             const bookingRes = await axios.get(
               `http://localhost:5000/api/bookings/user/${userId}`
             );
 
             const allBookings = bookingRes.data;
+
+            // 3. Separate Upcoming vs Past
             const today = new Date();
-            today.setHours(0, 0, 0, 0); // Reset time part for accurate date comparison
+            today.setHours(0, 0, 0, 0);
 
             const upcoming = [];
             const past = [];
 
             allBookings.forEach((b) => {
               const checkInDate = new Date(b.checkIn);
-
-              // Logic:
-              // If check-in is in future OR today -> Upcoming
-              // If check-in is passed -> History
               if (checkInDate >= today) {
                 upcoming.push(b);
               } else {
@@ -129,7 +132,7 @@ const MyDashboard = () => {
               }
             });
 
-            // Sort by Date (Newest first)
+            // Sort: Newest bookings first
             upcoming.sort(
               (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
             );
@@ -147,25 +150,24 @@ const MyDashboard = () => {
     };
 
     fetchData();
-  }, [isLoaded, clerkUser, refreshKey]); // Refresh when refreshKey changes
+  }, [isLoaded, clerkUser, refreshKey]);
 
   // --- Payment Handler ---
-  const handlePaymentConfirm = async (bookingId) => {
+  const handlePaymentConfirm = async (bookingId, paymentIntent) => {
     try {
-      const promise = axios.put(
+      const res = await axios.put(
         `http://localhost:5000/api/bookings/pay/${bookingId}`
       );
 
-      toast.promise(promise, {
-        loading: "Processing payment and assigning room...",
-        success: (data) => {
-          setRefreshKey((prev) => prev + 1); // Refresh data
-          return `Payment successful! Room ${data.data.assignedRoomNumber} assigned.`;
-        },
-        error: "Failed to process payment. Please try again.",
-      });
+      if (res.status === 200) {
+        toast.success("Payment Successful!", {
+          description: `Booking confirmed. Room ${res.data.assignedRoomNumber} assigned.`,
+        });
+        setRefreshKey((prev) => prev + 1);
+      }
     } catch (err) {
       console.error(err);
+      toast.error("Failed to update booking status via server.");
     }
   };
 
@@ -175,9 +177,12 @@ const MyDashboard = () => {
       const statusMatch =
         filterStatus === "all" ? true : booking.status === filterStatus;
 
-      // Formatting date to match input 'YYYY-MM-DD'
-      const bookingDate = new Date(booking.checkIn).toISOString().split("T")[0];
-      const dateMatch = filterDate === "" ? true : bookingDate === filterDate;
+      let dateMatch = true;
+      if (filterDate) {
+        const bookingDate = new Date(booking.checkIn).setHours(0, 0, 0, 0);
+        const selectedDate = new Date(filterDate).setHours(0, 0, 0, 0);
+        dateMatch = bookingDate === selectedDate;
+      }
 
       return statusMatch && dateMatch;
     });
@@ -187,15 +192,11 @@ const MyDashboard = () => {
   const filteredPast = applyFilters(bookings.past);
 
   const clearFilters = () => {
-    setFilterDate("");
+    setFilterDate(undefined);
     setFilterStatus("all");
   };
 
-  // --- Profile Update Handlers ---
-  const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
+  // --- Profile Update ---
   const handleSaveProfile = async () => {
     try {
       await axios.put("http://localhost:5000/api/users/update-profile", {
@@ -207,37 +208,6 @@ const MyDashboard = () => {
       toast.success("Profile Updated!");
     } catch (err) {
       toast.error("Update Failed");
-    }
-  };
-
-  // --- Password Change (Clerk) ---
-  const handlePasswordChange = async () => {
-    const { currentPassword, newPassword, confirmPassword } = passwordData;
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error("All fields are required.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error("New passwords do not match.");
-      return;
-    }
-    try {
-      setPasswordLoading(true);
-      await clerkUser.updatePassword({
-        newPassword: newPassword,
-        currentPassword: currentPassword,
-      });
-      toast.success("Password changed successfully.");
-      setPasswordOpen(false);
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-    } catch (err) {
-      toast.error(err.errors?.[0]?.message || "Password Update Failed");
-    } finally {
-      setPasswordLoading(false);
     }
   };
 
@@ -311,19 +281,39 @@ const MyDashboard = () => {
                   </Select>
                 </div>
 
+                {/* CALENDAR FILTER */}
                 <div className="flex-1 space-y-2">
                   <Label className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
                     <CalendarIcon className="w-3 h-3" /> Filter by Check-in
                   </Label>
-                  <Input
-                    type="date"
-                    value={filterDate}
-                    onChange={(e) => setFilterDate(e.target.value)}
-                    className="w-full"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={`w-full justify-start text-left font-normal ${
+                          !filterDate && "text-muted-foreground"
+                        }`}
+                      >
+                        <CalendarIcon className="w-4 h-4 mr-2" />
+                        {filterDate ? (
+                          format(filterDate, "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={filterDate}
+                        onSelect={setFilterDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
-                {(filterStatus !== "all" || filterDate !== "") && (
+                {(filterStatus !== "all" || filterDate) && (
                   <Button variant="ghost" onClick={clearFilters}>
                     <X className="w-4 h-4 mr-2" /> Clear Filters
                   </Button>
@@ -346,7 +336,7 @@ const MyDashboard = () => {
                       currency={currency}
                       convertPrice={convertPrice}
                       onPayConfirm={handlePaymentConfirm}
-                      type="upcoming"
+                      isUpcoming={true}
                     />
                   ))}
                   {filteredUpcoming.length === 0 && (
@@ -361,7 +351,7 @@ const MyDashboard = () => {
                       booking={b}
                       currency={currency}
                       convertPrice={convertPrice}
-                      type="past"
+                      isUpcoming={false}
                     />
                   ))}
                   {filteredPast.length === 0 && (
@@ -372,125 +362,72 @@ const MyDashboard = () => {
             </div>
           </TabsContent>
 
-          {/* PROFILE TAB (Existing Code - Shortened for brevity as it was working) */}
-          <TabsContent value="profile" className="animate-in fade-in-50">
-            {/* ... (Keep your existing Profile Tab code here) ... */}
-            {/* Since the request focused on booking logic, I'm keeping the profile structure same as your provided code */}
-            <Card className="border-none shadow-md">
-              <CardHeader className="flex flex-row items-center justify-between pb-4 space-y-0 border-b">
+          {/* PROFILE TAB */}
+          <TabsContent value="profile">
+            <Card>
+              <CardHeader>
                 <CardTitle>Personal Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>First Name</Label>
+                    <Input
+                      value={formData.firstName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, firstName: e.target.value })
+                      }
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Last Name</Label>
+                    <Input
+                      value={formData.lastName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, lastName: e.target.value })
+                      }
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input
+                      value={formData.phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Address</Label>
+                    <Input
+                      value={formData.address}
+                      onChange={(e) =>
+                        setFormData({ ...formData, address: e.target.value })
+                      }
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-2">
+                    <Label>Country</Label>
+                    <Input
+                      value={formData.country}
+                      onChange={(e) =>
+                        setFormData({ ...formData, country: e.target.value })
+                      }
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
                 <Button
                   onClick={() =>
                     isEditing ? handleSaveProfile() : setIsEditing(true)
                   }
-                  variant={isEditing ? "default" : "outline"}
                 >
-                  {isEditing ? (
-                    <>
-                      <Save className="w-4 h-4 mr-2" /> Save
-                    </>
-                  ) : (
-                    <>
-                      <Edit2 className="w-4 h-4 mr-2" /> Edit
-                    </>
-                  )}
+                  {isEditing ? "Save Changes" : "Edit Profile"}
                 </Button>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="grid gap-8 md:grid-cols-2">
-                  {/* Email */}
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <div className="flex items-center h-10 px-3 border rounded-md bg-muted/50 text-muted-foreground">
-                      {clerkUser?.primaryEmailAddress?.emailAddress}
-                    </div>
-                  </div>
-                  {/* Password Dialog */}
-                  <div className="space-y-2">
-                    <Label>Password</Label>
-                    <div className="flex items-center gap-4">
-                      <Input
-                        type="password"
-                        value="********"
-                        disabled
-                        className="bg-muted/30"
-                      />
-                      <Dialog
-                        open={passwordOpen}
-                        onOpenChange={setPasswordOpen}
-                      >
-                        <DialogTrigger asChild>
-                          <Button variant="outline">Change Password</Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Change Password</DialogTitle>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <Input
-                              placeholder="Current Password"
-                              type="password"
-                              value={passwordData.currentPassword}
-                              onChange={(e) =>
-                                setPasswordData({
-                                  ...passwordData,
-                                  currentPassword: e.target.value,
-                                })
-                              }
-                            />
-                            <Input
-                              placeholder="New Password"
-                              type="password"
-                              value={passwordData.newPassword}
-                              onChange={(e) =>
-                                setPasswordData({
-                                  ...passwordData,
-                                  newPassword: e.target.value,
-                                })
-                              }
-                            />
-                            <Input
-                              placeholder="Confirm Password"
-                              type="password"
-                              value={passwordData.confirmPassword}
-                              onChange={(e) =>
-                                setPasswordData({
-                                  ...passwordData,
-                                  confirmPassword: e.target.value,
-                                })
-                              }
-                            />
-                          </div>
-                          <DialogFooter>
-                            <Button
-                              onClick={handlePasswordChange}
-                              disabled={passwordLoading}
-                            >
-                              Update
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </div>
-                  {/* Form Fields */}
-                  {["firstName", "lastName", "phone", "address", "country"].map(
-                    (field) => (
-                      <div className="space-y-2" key={field}>
-                        <Label className="capitalize">
-                          {field.replace(/([A-Z])/g, " $1").trim()}
-                        </Label>
-                        <Input
-                          name={field}
-                          value={formData[field]}
-                          onChange={handleInputChange}
-                          disabled={!isEditing}
-                          className={!isEditing ? "bg-muted/30" : ""}
-                        />
-                      </div>
-                    )
-                  )}
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -500,13 +437,13 @@ const MyDashboard = () => {
   );
 };
 
-// --- Sub Component: Booking Card ---
+// --- Updated Booking Card with Detailed View ---
 const BookingCard = ({
   booking,
   currency,
   convertPrice,
   onPayConfirm,
-  type,
+  isUpcoming,
 }) => {
   const getStatusColor = (status) => {
     switch (status) {
@@ -523,14 +460,29 @@ const BookingCard = ({
     }
   };
 
-  // CheckIn Date Formatting
-  const formattedCheckIn = new Date(booking.checkIn).toLocaleDateString();
-  const formattedCheckOut = new Date(booking.checkOut).toLocaleDateString();
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "confirmed":
+        return <CheckCircle className="w-4 h-4 mr-1" />;
+      case "pending":
+        return <Clock className="w-4 h-4 mr-1" />;
+      case "cancelled":
+        return <XCircle className="w-4 h-4 mr-1" />;
+      default:
+        return null;
+    }
+  };
+
+  const checkIn = new Date(booking.checkIn);
+  const checkOut = new Date(booking.checkOut);
+  const nights = differenceInCalendarDays(checkOut, checkIn);
+  const formattedCheckIn = format(checkIn, "MMM dd, yyyy");
+  const formattedCheckOut = format(checkOut, "MMM dd, yyyy");
 
   return (
     <Card className="overflow-hidden transition-all border group hover:border-primary/50">
       <div className="flex flex-col md:flex-row">
-        {/* Image Handling - getting first image from Room or Hotel */}
+        {/* Thumbnail Image */}
         <img
           src={
             booking.roomId?.images?.[0] ||
@@ -547,73 +499,225 @@ const BookingCard = ({
                 <h3 className="text-xl font-bold">
                   {booking.roomId?.name || "Room Name Unavailable"}
                 </h3>
-                <p className="text-sm font-medium text-muted-foreground">
+                <div className="flex items-center mt-1 text-sm font-medium text-muted-foreground">
+                  <Hotel className="w-4 h-4 mr-1" />
                   {booking.hotelId?.name}
-                </p>
+                </div>
               </div>
-              <Badge className={`${getStatusColor(booking.status)} capitalize`}>
+              <Badge
+                className={`${getStatusColor(
+                  booking.status
+                )} capitalize flex items-center`}
+              >
+                {getStatusIcon(booking.status)}
                 {booking.status}
               </Badge>
             </div>
 
             <div className="grid grid-cols-2 mt-3 text-sm gap-y-1 text-muted-foreground">
-              <p>
-                Check-in:{" "}
-                <span className="font-medium text-foreground">
-                  {formattedCheckIn}
-                </span>
-              </p>
-              <p>
-                Check-out:{" "}
-                <span className="font-medium text-foreground">
-                  {formattedCheckOut}
-                </span>
-              </p>
+              <div className="flex items-center">
+                <CalendarIconLucide className="w-4 h-4 mr-2 opacity-70" />
+                {formattedCheckIn} - {formattedCheckOut}
+              </div>
+              <div className="flex items-center">
+                <Receipt className="w-4 h-4 mr-2 opacity-70" />
+                {currency} {convertPrice(booking.totalPrice)}
+              </div>
 
-              {/* Display Assigned Room Number if Confirmed/Completed */}
               {(booking.status === "confirmed" ||
                 booking.status === "completed") &&
                 booking.assignedRoomNumber && (
-                  <p className="col-span-2 p-1 px-2 mt-2 font-semibold text-green-700 bg-green-100 border border-green-200 rounded dark:bg-green-900/20 dark:text-green-300 w-fit dark:border-green-800">
+                  <p className="col-span-2 p-1 px-2 mt-2 text-xs font-semibold text-green-700 bg-green-100 border border-green-200 rounded w-fit">
                     🏡 Room No: {booking.assignedRoomNumber}
                   </p>
                 )}
             </div>
           </div>
 
-          <div className="flex items-end justify-between mt-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Price</p>
-              <p className="text-xl font-bold text-primary">
-                {currency} {convertPrice(booking.totalPrice)}
-              </p>
-            </div>
+          <div className="flex items-end justify-end gap-3 mt-4">
+            {/* VIEW DETAILS DIALOG */}
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="border-gray-300">
+                  <Eye className="w-4 h-4 mr-2" /> View Details
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
+                    {booking.hotelId?.name}
+                    <Badge
+                      className={`${getStatusColor(
+                        booking.status
+                      )} ml-2 text-xs font-normal`}
+                    >
+                      {booking.status}
+                    </Badge>
+                  </DialogTitle>
+                  <DialogDescription>
+                    Booking ID:{" "}
+                    <span className="font-mono text-xs">{booking._id}</span>
+                  </DialogDescription>
+                </DialogHeader>
 
-            {/* Edit / Pay Now Button - Only for Pending Bookings in Upcoming Tab */}
-            {type === "upcoming" && booking.status === "pending" && (
+                <ScrollArea className="max-h-[70vh] pr-4">
+                  <div className="grid gap-6">
+                    {/* Hotel & Room Info */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <img
+                        src={
+                          booking.roomId?.images?.[0] ||
+                          "https://placehold.co/600x400"
+                        }
+                        className="object-cover w-full h-48 rounded-lg"
+                        alt="Room"
+                      />
+                      <div className="space-y-3">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">
+                            Room Details
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {booking.roomId?.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {booking.roomId?.desc}
+                          </p>
+                        </div>
+                        <Separator />
+                        <div>
+                          <h4 className="font-semibold text-gray-900">
+                            Location
+                          </h4>
+                          <div className="flex items-start gap-2 text-sm text-gray-600">
+                            <MapPin className="w-4 h-4 mt-0.5" />
+                            {booking.hotelId?.address || "Address unavailable"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Stay Dates */}
+                    <div className="grid grid-cols-2 gap-4 p-4 text-center rounded-lg bg-muted/30">
+                      <div>
+                        <p className="text-xs font-bold tracking-wider uppercase text-muted-foreground">
+                          Check-In
+                        </p>
+                        <p className="text-lg font-bold text-gray-800">
+                          {formattedCheckIn}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold tracking-wider uppercase text-muted-foreground">
+                          Check-Out
+                        </p>
+                        <p className="text-lg font-bold text-gray-800">
+                          {formattedCheckOut}
+                        </p>
+                      </div>
+                      <div className="col-span-2 pt-2 mt-1 text-sm border-t text-muted-foreground">
+                        Total Stay:{" "}
+                        <b>
+                          {nights} Night{nights > 1 ? "s" : ""}
+                        </b>
+                      </div>
+                    </div>
+
+                    {/* Payment Info */}
+                    <div className="space-y-2">
+                      <h4 className="flex items-center font-semibold text-gray-900">
+                        <CreditCard className="w-4 h-4 mr-2" /> Payment Details
+                      </h4>
+                      <div className="p-4 space-y-2 rounded-lg bg-gray-50">
+                        <div className="flex justify-between text-sm">
+                          <span>Total Price:</span>
+                          <span className="text-lg font-bold">
+                            {currency} {convertPrice(booking.totalPrice)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>Payment Method:</span>
+                          <span className="capitalize">
+                            {booking.paymentMethod === "payLater"
+                              ? "Pay at Property"
+                              : "Paid Online"}
+                          </span>
+                        </div>
+                        {booking.status === "confirmed" && (
+                          <div className="flex justify-between text-sm font-medium text-green-600">
+                            <span>Payment Status:</span>
+                            <span>Paid / Confirmed</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </ScrollArea>
+
+                <DialogFooter className="gap-2 mt-4 sm:gap-0">
+                  {/* Only show PAY NOW if pending and upcoming */}
+                  {isUpcoming && booking.status === "pending" && (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button className="w-full text-white bg-blue-600 sm:w-auto hover:bg-blue-700">
+                          <CreditCard className="w-4 h-4 mr-2" /> Pay Now
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>Complete Payment</DialogTitle>
+                          <DialogDescription>
+                            Secure payment via Stripe for{" "}
+                            <b>
+                              {currency} {convertPrice(booking.totalPrice)}
+                            </b>
+                            .
+                          </DialogDescription>
+                        </DialogHeader>
+                        <Elements stripe={stripePromise}>
+                          <StripePaymentForm
+                            amount={convertPrice(booking.totalPrice)}
+                            currency={currency}
+                            onSuccess={(paymentIntent) =>
+                              onPayConfirm(booking._id, paymentIntent)
+                            }
+                          />
+                        </Elements>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* MAIN PAY BUTTON (Quick Access) */}
+            {isUpcoming && booking.status === "pending" && (
               <Dialog>
                 <DialogTrigger asChild>
                   <Button className="text-white bg-blue-600 hover:bg-blue-700">
                     <CreditCard className="w-4 h-4 mr-2" /> Pay Now
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>Complete Payment</DialogTitle>
                     <DialogDescription>
-                      Confirm payment of{" "}
+                      Secure payment via Stripe for{" "}
                       <b>
                         {currency} {convertPrice(booking.totalPrice)}
-                      </b>{" "}
-                      to secure your booking.
-                      <br />A room number will be assigned automatically.
+                      </b>
+                      .
                     </DialogDescription>
                   </DialogHeader>
-                  <DialogFooter>
-                    <Button onClick={() => onPayConfirm(booking._id)}>
-                      Confirm Payment
-                    </Button>
-                  </DialogFooter>
+                  <Elements stripe={stripePromise}>
+                    <StripePaymentForm
+                      amount={convertPrice(booking.totalPrice)}
+                      currency={currency}
+                      onSuccess={(paymentIntent) =>
+                        onPayConfirm(booking._id, paymentIntent)
+                      }
+                    />
+                  </Elements>
                 </DialogContent>
               </Dialog>
             )}

@@ -23,6 +23,7 @@ import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
 import SingleRoom from "./components/SingleRoom";
 import MyDashboard from "./pages/MyDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const Home = () => (
   <>
@@ -45,8 +46,10 @@ function App() {
             firstName: user.firstName,
             lastName: user.lastName,
             photo: user.imageUrl,
+            // පහත line එක එකතු කරන්න: Clerk metadata වලින් role එක යවන්න
+            role: user.publicMetadata?.role || "user",
           });
-          console.log("User synced with Database");
+          // console.log("User synced with Database");
         } catch (error) {
           console.error("Error syncing user:", error);
         }
@@ -72,6 +75,7 @@ function App() {
             <Route path="/sign-up/*" element={<SignUpPage />} />
             <Route path="/room/:id" element={<SingleRoom />} />
             <Route path="/dashboard" element={<MyDashboard />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
           </Routes>
         </div>
         <Footer />

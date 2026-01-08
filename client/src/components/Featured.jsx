@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import HotelCard from "./HotelCard";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Featured = () => {
@@ -11,16 +11,18 @@ const Featured = () => {
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
-        // Backend එකෙන් featured hotels විතරක් ඉල්ලනවා (limit=4)
-        // අපි backend එකේ already හදලා තියෙන්නේ ?featured=true වැඩ කරන විදියට
         const res = await axios.get(
           "http://localhost:5000/api/hotels?featured=true&limit=4"
         );
 
-        // Backend එකෙන් එන format එක { hotels: [...], totalCount: ... } නිසා res.data.hotels ගන්න ඕනේ
-        setFeaturedHotels(res.data.hotels);
+        // --- FIX: Data Handle Logic ---
+        // Backend එකෙන් කෙලින්ම Array එකක් එනවා නම් res.data ගන්නවා.
+        // නැත්නම් res.data.hotels ගන්නවා.
+        const data = Array.isArray(res.data) ? res.data : res.data.hotels || [];
+        setFeaturedHotels(data);
       } catch (err) {
         console.error("Error fetching featured hotels:", err);
+        setFeaturedHotels([]); // Error ආවොත් හිස් array එකක් දානවා crash නොවෙන්න
       } finally {
         setLoading(false);
       }
@@ -33,8 +35,8 @@ const Featured = () => {
     <section className="py-16 md:py-24 bg-background">
       <div className="px-4 mx-auto max-w-7xl md:px-8">
         {/* Header Section */}
-        <div className="flex flex-col items-end justify-between gap-4 mb-10 md:flex-row">
-          <div className="space-y-2">
+        <div className="flex flex-col gap-4 mb-12 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-4">
             <h2 className="text-3xl font-extrabold tracking-tight md:text-5xl text-foreground">
               Featured <span className="text-primary">Stays</span>
             </h2>
@@ -60,16 +62,28 @@ const Featured = () => {
               <div
                 key={i}
                 className="h-[350px] bg-muted/60 rounded-2xl animate-pulse"
-              ></div>
+              >
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground/50" />
+                </div>
+              </div>
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {featuredHotels.map((hotel) => (
-              // මෙතන අපි කලින් හදපු HotelCard එකම පාවිච්චි කරනවා
-              // එතකොට Price, Icon, Image ඔක්කොම ලස්සනට පේනවා
-              <HotelCard key={hotel._id} hotel={hotel} />
-            ))}
+            {/* --- FIX: Safety Check --- */}
+            {Array.isArray(featuredHotels) && featuredHotels.length > 0 ? (
+              featuredHotels.map((hotel) => (
+                <HotelCard key={hotel._id} hotel={hotel} />
+              ))
+            ) : (
+              // Data නැතිනම් පෙන්වන පණිවිඩය
+              <div className="py-10 text-center col-span-full bg-muted/20 rounded-xl">
+                <p className="text-muted-foreground">
+                  No featured properties found at the moment.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

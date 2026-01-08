@@ -1,84 +1,72 @@
 import { useEffect, useState, useRef } from "react";
-import { motion, useInView } from "framer-motion";
-import { Users, Building2, Star } from "lucide-react";
+import { useInView } from "framer-motion";
+import { Users, Building2, Star, Globe } from "lucide-react";
 
 // --- Single Stat Card Component ---
 const StatCard = ({ item }) => {
   const ref = useRef(null);
-  // මෙම කොටස screen එකට ආවද කියලා බලනවා (margin: -100px කියන්නේ screen එකට හොඳටම ආවම trigger වෙන්න)
-  const isInView = useInView(ref, { margin: "-100px", once: false });
+  const isInView = useInView(ref, { margin: "-50px", once: true });
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    let start = 0;
-    const end = parseInt(item.value.substring(0, 3)); // "15k+" වලින් 15 ගන්නවා (Sample logic)
-    // ඇත්තටම අපිට අංකය විතරක් animation එකට ඕන නිසා අපි පොඩි parsing එකක් කරනවා:
-    // සරලව: 0 සිට target අගය දක්වා loop එකක්
+    if (!isInView) return;
 
-    // Animation Duration & Logic
-    let duration = 2000; // 2 seconds
+    const end = item.targetNumber;
+    let duration = 2000;
     let startTime = null;
     let animationFrame;
 
     const animate = (timestamp) => {
       if (!startTime) startTime = timestamp;
       const progress = timestamp - startTime;
-
-      // Calculate current number based on progress
       const percentage = Math.min(progress / duration, 1);
-      const currentVal = Math.floor(percentage * item.targetNumber);
+      const currentVal = Math.floor(percentage * end);
 
       setCount(currentVal);
 
       if (progress < duration) {
         animationFrame = requestAnimationFrame(animate);
+      } else {
+        setCount(end);
       }
     };
 
-    if (isInView) {
-      animationFrame = requestAnimationFrame(animate);
-    } else {
-      // View එකෙන් එලියට ගියාම ආයේ 0 ට reset කරනවා (Re-triggering effect)
-      setCount(0);
-      if (animationFrame) cancelAnimationFrame(animationFrame);
-    }
-
-    return () => {
-      if (animationFrame) cancelAnimationFrame(animationFrame);
-    };
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
   }, [isInView, item.targetNumber]);
 
   return (
     <div
       ref={ref}
-      className="relative h-[400px] group overflow-hidden flex items-center justify-center"
+      className="relative flex flex-col items-center justify-center p-8 overflow-hidden text-center transition-transform duration-300 border rounded-2xl group border-white/10 hover:-translate-y-2"
     >
-      {/* 1. Background Image with Zoom Effect */}
-      <div className="absolute inset-0 bg-black">
-        <img
-          src={item.image}
-          alt={item.label}
-          className="w-full h-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-110"
-        />
-        <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all duration-500" />
-      </div>
+      {/* --- Background Image Layer --- */}
+      <div
+        className="absolute inset-0 z-0 transition-transform duration-500 bg-center bg-cover group-hover:scale-110"
+        style={{
+          backgroundImage: `url(${item.image})`, // පින්තූරය මෙතැනින් load වේ
+          filter: "brightness(0.5)", // පින්තූරය අඳුරු කිරීමට (Text පැහැදිලිව පෙනෙන්න)
+        }}
+      />
 
-      {/* 2. Content */}
-      <div className="relative z-10 text-center p-6 border border-white/10 bg-white/5 backdrop-blur-sm rounded-2xl w-3/4 transform transition-all duration-500 hover:-translate-y-2">
-        <div className="mb-4 flex justify-center">
-          <div className="p-3 bg-primary/20 rounded-full text-primary ring-1 ring-primary/50">
-            {item.icon}
-          </div>
+      {/* --- Content Layer (Z-Index 10) --- */}
+      <div className="relative z-10 flex flex-col items-center">
+        <div className="p-3 mb-4 transition-colors rounded-full bg-primary/20 text-primary group-hover:bg-primary group-hover:text-white">
+          {item.icon}
         </div>
 
-        <h3 className="text-5xl md:text-6xl font-extrabold text-white mb-2 font-sans tracking-tight">
-          {count}
-          {item.suffix}
-        </h3>
+        <div className="space-y-1">
+          <h3 className="text-4xl font-extrabold text-white sm:text-5xl">
+            {count}
+            <span className="transition-colors text-primary group-hover:text-white">
+              {item.suffix}
+            </span>
+          </h3>
 
-        <p className="text-lg text-gray-300 font-medium tracking-wide uppercase">
-          {item.label}
-        </p>
+          <p className="text-sm font-medium tracking-wider text-gray-200 uppercase sm:text-base">
+            {item.label}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -86,44 +74,65 @@ const StatCard = ({ item }) => {
 
 // --- Main Stats Section ---
 const Stats = () => {
+  // Data with Images (ඔබට අවශ්‍ය පින්තූර URLs මෙතැනට දාන්න)
   const statsData = [
     {
       id: 1,
       label: "Happy Guests",
-      targetNumber: 150, // Animation එක 0 - 150 දක්වා යයි
+      targetNumber: 150,
       suffix: "k+",
-      value: "150k+",
       icon: <Users className="w-8 h-8" />,
+      // උදාහරණ පින්තූර: Unsplash (ඔබේ පින්තූර වලින් replace කරන්න)
       image:
-        "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?q=80&w=1000&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80",
     },
     {
       id: 2,
       label: "Luxury Hotels",
       targetNumber: 85,
       suffix: "+",
-      value: "85+",
       icon: <Building2 className="w-8 h-8" />,
       image:
-        "https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1000&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
     },
     {
       id: 3,
-      label: "User Ratings",
+      label: "Cities",
+      targetNumber: 20,
+      suffix: "+",
+      icon: <Globe className="w-8 h-8" />,
+      image:
+        "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=800&q=80",
+    },
+    {
+      id: 4,
+      label: "Ratings",
       targetNumber: 4,
-      suffix: ".9", // මෙතන 4 වෙනකම් count වෙලා .9 අගට එකතු වෙනවා
-      value: "4.9",
+      suffix: ".9",
       icon: <Star className="w-8 h-8" />,
       image:
-        "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?q=80&w=1000&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1522798514-97ceb8c4f1c8?auto=format&fit=crop&w=800&q=80",
     },
   ];
 
   return (
-    <section className="grid grid-cols-1 md:grid-cols-3 w-full bg-black">
-      {statsData.map((item) => (
-        <StatCard key={item.id} item={item} />
-      ))}
+    <section className="py-16 bg-gray-900 border-t border-white/10">
+      <div className="container px-4 mx-auto md:px-8">
+        <div className="mb-12 text-center">
+          <h2 className="text-3xl font-bold text-white md:text-4xl">
+            Our Numbers Speak
+          </h2>
+          <p className="mt-2 text-gray-400">
+            Trusted by thousands of travelers around the world.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {statsData.map((item) => (
+            <StatCard key={item.id} item={item} />
+          ))}
+        </div>
+      </div>
     </section>
   );
 };
